@@ -1,0 +1,221 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.h1 {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text-title);
+  letter-spacing: -0.02em;
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search {
+  min-width: 220px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-body);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 9px 12px;
+}
+.search:focus {
+  outline: none;
+  border-color: var(--action);
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--text-label);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 13px;
+  border-radius: var(--radius-control);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-1);
+  border-color: var(--border-4);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--action);
+  color: #fff;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+
+.btnDanger {
+  border-color: var(--danger-soft);
+  color: var(--danger);
+}
+.btnDanger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.tableWrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+}
+.scroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.table thead th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  padding: 11px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-2);
+  color: var(--text-body);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.name {
+  color: var(--text-title);
+  font-weight: 500;
+}
+.mono {
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.chip {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--action-soft);
+  color: var(--action-hover);
+  margin-right: 4px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+}
+.badgeActive {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+.badgeSuspended {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.badgeLeft {
+  background: var(--surface-1);
+  color: var(--text-muted);
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* Form fields (modal) */
+.field {
+  margin-bottom: 14px;
+}
+.label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-label);
+  margin-bottom: 6px;
+}
+.input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-body);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--action);
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-body);
+}
+.error {
+  font-size: 12.5px;
+  color: var(--danger-2);
+  margin-bottom: 10px;
+}
+.state {
+  padding: 36px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+.pageInfo {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,223 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.searchBox {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-hover);
+  max-height: 320px;
+  overflow: auto;
+  z-index: 20;
+}
+.resultRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-2);
+  font-size: 13px;
+  color: var(--text-body);
+}
+.resultRow:last-child {
+  border-bottom: none;
+}
+.resultRow:hover {
+  background: var(--surface-1);
+}
+.resultMeta {
+  color: var(--text-faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.cart {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+  position: sticky;
+  top: 20px;
+}
+.cartTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-title);
+  margin-bottom: 12px;
+}
+.cartEmpty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px 0;
+  text-align: center;
+}
+.cartLine {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-2);
+}
+.cartName {
+  font-size: 13px;
+  color: var(--text-title);
+  font-weight: 500;
+}
+.cartListed {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.priceInput {
+  width: 120px;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: right;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.priceInput:focus {
+  outline: none;
+  border-color: var(--action);
+}
+.remove {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.remove:hover {
+  color: var(--danger);
+}
+.note {
+  width: 100%;
+  margin-top: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 9px 11px;
+  resize: vertical;
+  min-height: 60px;
+}
+.summary {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-body);
+  margin: 12px 0;
+}
+.total {
+  font-weight: 700;
+  color: var(--text-title);
+}
+.submit {
+  width: 100%;
+  border: none;
+  background: var(--action);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px;
+  border-radius: var(--radius-control);
+}
+.submit:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+.submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sent {
+  margin-top: 28px;
+}
+.sentTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-title);
+  margin-bottom: 12px;
+}
+.batch {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.batchHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  border-top: 1px solid var(--border-2);
+}
+.lineName {
+  color: var(--text-title);
+  flex: 1;
+}
+.lineNums {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.pending {
+  background: #fdf3e3;
+  color: var(--warning-text);
+}
+.approved {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+.rejected {
+  background: var(--danger-soft);
+  color: var(--danger);
+}

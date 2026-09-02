@@ -1,0 +1,29 @@
+# ---- .NET ----
+bin/
+obj/
+*.user
+.vs/
+*.suo
+
+# ---- Node / Frontend ----
+node_modules/
+dist/
+
+# ---- Publish / đóng gói ----
+publish/
+publish.zip
+
+# ---- SPA build output (tự sinh bởi build.ps1) ----
+src/LabLink.Api/wwwroot/*
+!src/LabLink.Api/wwwroot/.gitkeep
+
+# ---- Bí mật (KHÔNG commit) ----
+# user-secrets nằm ngoài repo (%APPDATA%\Microsoft\UserSecrets) — vốn không bị commit
+appsettings.*.local.json
+*.env.local
+secrets.json
+
+# ---- Khác ----
+*.log
+.DS_Store
+Thumbs.db

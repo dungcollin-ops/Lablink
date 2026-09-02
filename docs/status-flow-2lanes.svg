@@ -1,0 +1,49 @@
+<svg width="680" height="458" viewBox="0 0 680 458" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Hai luồng trạng thái: khách lẻ và bác sĩ</title>
+<style>
+  .t{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;font-weight:600}
+  .ts{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:12px;font-weight:500}
+  .lbl{fill:#1e2a44}.mut{fill:#5b6b85}
+  .box{fill:#f3f6fb;stroke:#dbe2ec;stroke-width:1}
+  .hl{fill:#eef4ff;stroke:#2563eb;stroke-width:2}
+  .arr{stroke:#b5c1d4;stroke-width:2;fill:none}.ah{fill:#b5c1d4}
+  .pk{fill:#dbe6fb}.pkt{fill:#1d4ed8}
+  .pxn{fill:#d9f0ea}.pxnt{fill:#0b7a68}
+  .au{fill:#e7ebf2}.aut{fill:#5b6b85}
+</style>
+<rect x="0" y="0" width="680" height="458" fill="#ffffff"/>
+<circle cx="150" cy="20" r="5" fill="#2563eb"/><text class="ts lbl" x="160" y="24">Phòng khám</text>
+<circle cx="290" cy="20" r="5" fill="#0f9d8b"/><text class="ts lbl" x="300" y="24">Phòng XN</text>
+<circle cx="415" cy="20" r="5" fill="#8a97ab"/><text class="ts lbl" x="425" y="24">Tự động</text>
+<text class="ts mut" x="175" y="46" text-anchor="middle">KHÁCH LẺ</text>
+<text class="ts mut" x="505" y="46" text-anchor="middle">BÁC SĨ · PHÒNG KHÁM</text>
+<line class="arr" x1="175" y1="94" x2="175" y2="128"/><polygon class="ah" points="169,121 181,121 175,129"/>
+<line class="arr" x1="175" y1="168" x2="175" y2="214"/>
+<line class="arr" x1="505" y1="94" x2="505" y2="128"/><polygon class="ah" points="499,121 511,121 505,129"/>
+<line class="arr" x1="505" y1="168" x2="505" y2="214"/>
+<line class="arr" x1="175" y1="214" x2="505" y2="214"/>
+<line class="arr" x1="340" y1="214" x2="340" y2="244"/><polygon class="ah" points="334,237 346,237 340,245"/>
+<rect class="box" x="85" y="54" width="180" height="40" rx="10"/>
+<text class="t lbl" x="175" y="72" text-anchor="middle">Chờ lấy mẫu</text><text class="ts mut" x="175" y="87" text-anchor="middle">Ordered</text>
+<rect class="box" x="85" y="128" width="180" height="40" rx="10"/>
+<text class="t lbl" x="175" y="146" text-anchor="middle">Đã soạn mẫu</text><text class="ts mut" x="175" y="161" text-anchor="middle">Collected · SID</text>
+<rect class="box" x="415" y="54" width="180" height="40" rx="10"/>
+<text class="t lbl" x="505" y="72" text-anchor="middle">Đã soạn mẫu</text><text class="ts mut" x="505" y="87" text-anchor="middle">Collected · SID</text>
+<rect class="hl" x="415" y="128" width="180" height="40" rx="10"/>
+<text class="t lbl" x="505" y="146" text-anchor="middle">Đã gửi</text><text class="ts mut" x="505" y="161" text-anchor="middle">Sent</text>
+<rect class="pxn" x="93" y="102" width="164" height="22" rx="11"/><text class="ts pxnt" x="175" y="117" text-anchor="middle">PXN cử NV đến lấy</text>
+<rect class="pxn" x="98" y="180" width="154" height="22" rx="11"/><text class="ts pxnt" x="175" y="195" text-anchor="middle">NV mang mẫu về</text>
+<rect class="pk" x="423" y="102" width="164" height="22" rx="11"/><text class="ts pkt" x="505" y="117" text-anchor="middle">Phòng khám gửi mẫu</text>
+<rect class="pk" x="428" y="180" width="154" height="22" rx="11"/><text class="ts pkt" x="505" y="195" text-anchor="middle">Chuyển tới PXN</text>
+<rect class="pxn" x="263" y="192" width="154" height="22" rx="11"/><text class="ts pxnt" x="340" y="207" text-anchor="middle">PXN nhận + QC mẫu</text>
+<rect class="box" x="230" y="244" width="220" height="40" rx="10"/>
+<text class="t lbl" x="340" y="262" text-anchor="middle">Đã nhận</text><text class="ts mut" x="340" y="277" text-anchor="middle">Received · QC mẫu</text>
+<line class="arr" x1="340" y1="284" x2="340" y2="316"/><polygon class="ah" points="334,309 346,309 340,317"/>
+<rect class="pxn" x="263" y="290" width="154" height="22" rx="11"/><text class="ts pxnt" x="340" y="305" text-anchor="middle">PXN chạy mẫu</text>
+<rect class="box" x="230" y="316" width="220" height="40" rx="10"/>
+<text class="t lbl" x="340" y="334" text-anchor="middle">Đang chạy</text><text class="ts mut" x="340" y="349" text-anchor="middle">Running</text>
+<line class="arr" x1="340" y1="356" x2="340" y2="388"/><polygon class="ah" points="334,381 346,381 340,389"/>
+<rect class="au" x="263" y="362" width="154" height="22" rx="11"/><text class="ts aut" x="340" y="377" text-anchor="middle">Trả KQ (tự động)</text>
+<rect class="box" x="230" y="388" width="220" height="40" rx="10"/>
+<text class="t lbl" x="340" y="406" text-anchor="middle">Có kết quả</text><text class="ts mut" x="340" y="421" text-anchor="middle">Resulted · tải file KQ</text>
+</svg>

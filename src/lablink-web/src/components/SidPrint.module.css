@@ -1,0 +1,131 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 33, 63, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+}
+.modal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--white);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-title);
+  margin-right: auto;
+}
+.label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-label);
+}
+.select,
+.copies {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-body);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.copies {
+  width: 60px;
+  text-align: center;
+}
+.printBtn {
+  border: 1px solid var(--sid-border);
+  background: var(--white);
+  color: var(--sid);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius-control);
+  white-space: nowrap;
+}
+.printBtn:hover {
+  background: var(--sid-soft);
+}
+.close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: var(--text-faint);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.close:hover {
+  background: var(--surface-1);
+}
+.hint {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  padding: 8px 20px 0;
+}
+.body {
+  padding: 16px 20px 20px;
+  overflow: auto;
+}
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.label1 {
+  width: 189px; /* ~50mm */
+  border: 1px dashed var(--border-3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidText {
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #000;
+  letter-spacing: 0.02em;
+}
+.barcode {
+  width: 100%;
+  height: 46px;
+}
+.meta {
+  font-size: 10.5px;
+  color: #333;
+  line-height: 1.3;
+}
+
+/* Print: tem sát nhau, khổ ~50x25mm, không viền */
+@media print {
+  .label1 {
+    border: none;
+    width: 50mm;
+    height: 25mm;
+    padding: 1.5mm 2mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .labels {
+    gap: 0;
+  }
+}

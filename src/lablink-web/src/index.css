@@ -1,0 +1,49 @@
+@import "./theme/tokens.css";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-body);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+/* Khi in: ẩn toàn bộ app, chỉ hiện vùng tem SID (.sid-print-labels). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .sid-print-labels,
+  .sid-print-labels * {
+    visibility: visible;
+  }
+  .sid-print-labels {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

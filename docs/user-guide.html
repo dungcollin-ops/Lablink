@@ -1,0 +1,396 @@
+<!-- content only; skeleton wraps it -->
+<title>Hướng dẫn LabLink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ground:#f6f8fc; --surface:#ffffff; --surface-2:#eef2f8; --border:#dde4ef;
+    --ink:#12213f; --body:#42506b; --muted:#6b7890; --faint:#93a0b4;
+    --admin:#4f46e5; --admin-soft:#ecebfe;
+    --doctor:#2563eb; --doctor-soft:#e4edfd;
+    --lab:#0d9488; --lab-soft:#d9f2ee;
+    --retail:#b26a0a; --retail-soft:#fbf0da;
+    --shadow:0 1px 2px rgba(18,33,63,.05), 0 10px 30px rgba(18,33,63,.06);
+    --font:"Be Vietnam Pro",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+    --accent:var(--doctor); --accent-soft:var(--doctor-soft);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0d131e; --surface:#161f2e; --surface-2:#1d2837; --border:#2a3547;
+      --ink:#e9eef6; --body:#c1ccdc; --muted:#94a1b5; --faint:#6d7b90;
+      --admin:#a6a2f7; --admin-soft:#241f46;
+      --doctor:#8fb4f8; --doctor-soft:#182741;
+      --lab:#4fcbb8; --lab-soft:#123531;
+      --retail:#e2a648; --retail-soft:#3a2c11;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.32);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0d131e; --surface:#161f2e; --surface-2:#1d2837; --border:#2a3547;
+    --ink:#e9eef6; --body:#c1ccdc; --muted:#94a1b5; --faint:#6d7b90;
+    --admin:#a6a2f7; --admin-soft:#241f46;
+    --doctor:#8fb4f8; --doctor-soft:#182741;
+    --lab:#4fcbb8; --lab-soft:#123531;
+    --retail:#e2a648; --retail-soft:#3a2c11;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.32);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--body);font-family:var(--font);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  h1,h2,h3{color:var(--ink);text-wrap:balance;margin:0}
+  code,.mono{font-family:var(--mono)}
+
+  /* ---------- header ---------- */
+  header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 88%,transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+  .top-inner{max-width:1060px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+  .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2563eb,#0d9488);
+    color:#fff;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center}
+  .brand b{color:var(--ink);font-size:18px;font-weight:800;letter-spacing:-.01em}
+  .brand span{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-top:-2px}
+  nav.roles{display:flex;gap:6px;flex-wrap:wrap}
+  nav.roles a{font-size:13px;font-weight:600;color:var(--body);padding:7px 13px;border-radius:999px;
+    border:1px solid var(--border);background:var(--surface);white-space:nowrap;transition:.12s}
+  nav.roles a:hover{border-color:var(--accent);color:var(--accent)}
+  nav.roles a .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+
+  main{max-width:1060px;margin:0 auto;padding:0 24px 80px}
+
+  /* ---------- hero ---------- */
+  .hero{padding:52px 0 28px}
+  .eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+  .hero h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.02em;margin:12px 0 14px;line-height:1.08}
+  .hero p{font-size:17.5px;color:var(--muted);max-width:60ch;margin:0}
+
+  /* ---------- login band ---------- */
+  .band{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);
+    padding:26px 28px;margin:12px 0 8px}
+  .band h2{font-size:19px;font-weight:800;margin-bottom:14px}
+  .login-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:26px}
+  @media(max-width:720px){.login-grid{grid-template-columns:1fr}}
+  ol.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+  ol.steps li{counter-increment:s;position:relative;padding:6px 0 6px 40px;color:var(--body)}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:5px;width:26px;height:26px;border-radius:8px;
+    background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:700;font-family:var(--mono);
+    display:flex;align-items:center;justify-content:center}
+  .accounts{background:var(--surface-2);border-radius:14px;padding:16px}
+  .accounts .a-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:10px}
+  .acct{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+  .acct:last-child{border-bottom:none}
+  .acct .mono{color:var(--ink);font-size:12.5px}
+  .acct .r{font-size:11.5px;font-weight:600;color:var(--muted)}
+
+  /* ---------- role map ---------- */
+  .map{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 8px}
+  @media(max-width:820px){.map{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:460px){.map{grid-template-columns:1fr}}
+  .mcard{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);
+    border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
+  .mcard b{display:block;color:var(--ink);font-size:14.5px;font-weight:700;margin-bottom:4px}
+  .mcard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
+
+  /* ---------- role section ---------- */
+  section.role{margin-top:52px;scroll-margin-top:82px}
+  .role-head{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:16px 16px 0 0;
+    background:var(--accent-soft);border:1px solid var(--border);border-bottom:none}
+  .role-badge{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;font-size:22px;
+    display:flex;align-items:center;justify-content:center;flex:none}
+  .role-head h2{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .role-head .sub{font-size:13px;color:var(--muted);font-weight:500;margin-top:1px}
+  .role-menu{display:flex;flex-wrap:wrap;gap:6px;padding:14px 20px;background:var(--surface);
+    border:1px solid var(--border);border-bottom:none}
+  .role-menu .lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);align-self:center;margin-right:4px}
+  .chip{font-size:12.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:5px 11px;border-radius:999px}
+
+  .tasks{background:var(--surface);border:1px solid var(--border);border-radius:0 0 16px 16px;
+    box-shadow:var(--shadow);padding:8px 20px 20px;display:flex;flex-direction:column}
+  .task{padding:20px 0;border-bottom:1px dashed var(--border)}
+  .task:last-child{border-bottom:none}
+  .task h3{font-size:16.5px;font-weight:700;display:flex;align-items:center;gap:9px;margin-bottom:4px}
+  .task h3 .pin{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);
+    background:var(--accent-soft);padding:3px 8px;border-radius:6px;white-space:nowrap}
+  .task > .lead{font-size:14px;color:var(--muted);margin:0 0 12px}
+  .btn{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--surface-2);
+    border:1px solid var(--border);border-radius:7px;padding:1px 7px;white-space:nowrap}
+
+  .tip{display:flex;gap:10px;background:var(--accent-soft);border-radius:11px;padding:11px 14px;margin-top:12px;
+    font-size:13.5px;color:var(--ink)}
+  .tip .i{flex:none;font-weight:800;color:var(--accent)}
+
+  /* ---------- flow ---------- */
+  .flow-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:24px;margin-top:16px}
+  .pipe{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding-bottom:6px}
+  .stage{flex:1;min-width:118px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 12px 13px;text-align:center}
+  .stage b{display:block;color:var(--ink);font-size:13.5px;font-weight:700}
+  .stage span{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:2px}
+  .stage small{display:block;font-size:11px;color:var(--muted);margin-top:6px}
+  .lanes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  @media(max-width:640px){.lanes{grid-template-columns:1fr}}
+  .lane{border-radius:12px;padding:14px 16px}
+  .lane.retail{background:var(--retail-soft)}
+  .lane.doctor{background:var(--doctor-soft)}
+  .lane b{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+  .lane.retail b{color:var(--retail)} .lane.doctor b{color:var(--doctor)}
+  .lane p{margin:0;font-size:13px;color:var(--body);line-height:1.55}
+
+  footer{max-width:1060px;margin:0 auto;padding:28px 24px 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  html{scroll-behavior:smooth}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  .role-admin{--accent:var(--admin);--accent-soft:var(--admin-soft)}
+  .role-doctor{--accent:var(--doctor);--accent-soft:var(--doctor-soft)}
+  .role-lab{--accent:var(--lab);--accent-soft:var(--lab-soft)}
+  .role-retail{--accent:var(--retail);--accent-soft:var(--retail-soft)}
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="logo">L</div>
+      <div><b>LabLink</b><span>Hướng dẫn sử dụng</span></div>
+    </div>
+    <nav class="roles">
+      <a href="#admin"><span class="dot" style="background:var(--admin)"></span>Quản trị</a>
+      <a href="#doctor"><span class="dot" style="background:var(--doctor)"></span>Bác sĩ / PK</a>
+      <a href="#lab"><span class="dot" style="background:var(--lab)"></span>Phòng XN</a>
+      <a href="#retail"><span class="dot" style="background:var(--retail)"></span>Khách lẻ</a>
+      <a href="#flow"><span class="dot" style="background:var(--muted)"></span>Trạng thái</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="eyebrow">Cẩm nang thao tác</div>
+    <h1>Dùng LabLink theo vai trò của bạn</h1>
+    <p>Hệ thống đặt · chốt giá · duyệt và trả kết quả xét nghiệm. Tìm mục của vai bạn ở thanh trên, làm theo từng bước được đánh số.</p>
+  </div>
+
+  <div class="band" id="login">
+    <h2>Đăng nhập &amp; điều hướng</h2>
+    <div class="login-grid">
+      <ol class="steps">
+        <li>Mở trình duyệt, vào địa chỉ hệ thống nội bộ (ví dụ <code>http://project-mgmt.company.local</code>).</li>
+        <li>Nhập <b>Email</b> và <b>Mật khẩu</b> được cấp, bấm <span class="btn">Đăng nhập</span>.</li>
+        <li>Menu bên trái tự đổi theo vai của bạn — chỉ hiện những chức năng bạn được phép.</li>
+        <li>Bấm <span class="btn">Đăng xuất</span> ở cuối menu khi dùng xong.</li>
+      </ol>
+      <div class="accounts">
+        <div class="a-title">Tài khoản demo · mật khẩu: demo</div>
+        <div class="acct"><span class="mono">admin@lablink.local</span><span class="r">Quản trị</span></div>
+        <div class="acct"><span class="mono">bacsi@lablink.local</span><span class="r">Bác sĩ / PK</span></div>
+        <div class="acct"><span class="mono">lab@lablink.local</span><span class="r">Phòng XN</span></div>
+        <div class="acct"><span class="mono">khachle@lablink.local</span><span class="r">Khách lẻ</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="map">
+    <div class="mcard role-admin"><b>Quản trị</b><p>Tài khoản, phân quyền, báo cáo &amp; nhật ký toàn hệ thống.</p></div>
+    <div class="mcard role-doctor"><b>Bác sĩ / PK</b><p>Chốt giá, chỉ định bệnh nhân, gửi mẫu, theo dõi kết quả.</p></div>
+    <div class="mcard role-lab"><b>Phòng XN</b><p>Duyệt giá, lấy &amp; nhận mẫu, in tem, trả kết quả.</p></div>
+    <div class="mcard role-retail"><b>Khách lẻ</b><p>Tự đặt xét nghiệm và theo dõi, tải kết quả.</p></div>
+  </div>
+
+  <!-- ================= ADMIN ================= -->
+  <section class="role role-admin" id="admin">
+    <div class="role-head">
+      <div class="role-badge">◆</div>
+      <div><h2>Quản trị hệ thống</h2><div class="sub">Quản lý người dùng, phân quyền và giám sát hoạt động</div></div>
+    </div>
+    <div class="role-menu">
+      <span class="lbl">Menu</span>
+      <span class="chip">Báo cáo &amp; thống kê</span><span class="chip">Quản trị người dùng</span>
+      <span class="chip">Vai trò &amp; phân quyền</span><span class="chip">Nhật ký hoạt động</span>
+    </div>
+    <div class="tasks">
+      <div class="task">
+        <h3>Thêm &amp; quản lý người dùng <span class="pin">Quản trị người dùng</span></h3>
+        <p class="lead">Tạo tài khoản cho nhân viên và gán họ vào nhóm phù hợp.</p>
+        <ol class="steps">
+          <li>Vào <b>Quản trị người dùng</b>, bấm <span class="btn">＋ Thêm người dùng</span>.</li>
+          <li>Nhập Họ tên, Email, Mật khẩu, Phòng ban; tick <b>Nhóm</b> (Bác sĩ / Khách lẻ / Trưởng phòng XN / Quản trị) rồi bấm <span class="btn">Tạo</span>.</li>
+          <li>Trên mỗi dòng: <span class="btn">Sửa nhóm</span> đổi nhóm · <span class="btn">Khoá</span>/<span class="btn">Mở khoá</span> tạm dừng truy cập · <span class="btn">Đặt lại MK</span> cấp lại mật khẩu.</li>
+        </ol>
+        <div class="tip"><span class="i">!</span><div>Khoá tài khoản là chặn đăng nhập ngay lập tức — dùng khi nhân viên nghỉ hoặc mất máy.</div></div>
+      </div>
+      <div class="task">
+        <h3>Cấu hình phân quyền <span class="pin">Vai trò &amp; phân quyền</span></h3>
+        <p class="lead">Quyết định mỗi nhóm được làm gì bằng cách tick từng quyền.</p>
+        <ol class="steps">
+          <li>Mở <b>Vai trò &amp; phân quyền</b> — mỗi nhóm là một thẻ, quyền gom theo đối tượng (order, deal, result…).</li>
+          <li>Tick / bỏ tick các quyền cần thiết rồi bấm <span class="btn">Lưu</span> trên thẻ đó.</li>
+          <li>Nhóm <b>Quản trị</b> luôn đủ quyền, không chỉnh được — đúng thiết kế an toàn.</li>
+        </ol>
+      </div>
+      <div class="task">
+        <h3>Xem báo cáo &amp; nhật ký <span class="pin">Báo cáo · Nhật ký</span></h3>
+        <ol class="steps">
+          <li><b>Báo cáo &amp; thống kê:</b> tổng phiếu, doanh thu, phiếu <b>tồn đọng theo tuổi</b>, theo trạng thái, doanh thu theo ngày.</li>
+          <li><b>Nhật ký hoạt động:</b> tra ai làm gì, lúc nào — đăng nhập, duyệt giá, tạo user, in tem, tải kết quả…</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DOCTOR ================= -->
+  <section class="role role-doctor" id="doctor">
+    <div class="role-head">
+      <div class="role-badge">🩺</div>
+      <div><h2>Bác sĩ / Phòng khám</h2><div class="sub">Chốt giá, chỉ định, tự soạn &amp; gửi mẫu, theo dõi kết quả</div></div>
+    </div>
+    <div class="role-menu">
+      <span class="lbl">Menu</span>
+      <span class="chip">Chốt giá xét nghiệm</span><span class="chip">Chỉ định cho bệnh nhân</span><span class="chip">Theo dõi &amp; kết quả</span>
+    </div>
+    <div class="tasks">
+      <div class="task">
+        <h3>Đề nghị &amp; chốt giá <span class="pin">Chốt giá xét nghiệm</span></h3>
+        <p class="lead">Đề nghị mức giá riêng cho phòng khám, gửi phòng XN duyệt.</p>
+        <ol class="steps">
+          <li>Gõ tìm xét nghiệm → mục xuất hiện, bấm để thêm vào <b>Đề nghị của bạn</b>.</li>
+          <li>Sửa <b>giá đề nghị</b> cho từng dòng, thêm ghi chú nếu cần.</li>
+          <li>Bấm <span class="btn">Gửi phòng xét nghiệm duyệt</span>.</li>
+          <li>Theo dõi ở <b>Đề nghị đã gửi</b>: trạng thái <b>Chờ duyệt → Đã chốt / Từ chối</b>. Giá đã chốt sẽ tự áp khi chỉ định.</li>
+        </ol>
+      </div>
+      <div class="task">
+        <h3>Chỉ định cho bệnh nhân <span class="pin">Chỉ định cho bệnh nhân</span></h3>
+        <p class="lead">Nhập thông tin bệnh nhân, chọn xét nghiệm và gửi phòng XN.</p>
+        <ol class="steps">
+          <li>Nhập <b>Thông tin bệnh nhân</b>. Nhanh hơn: bấm <span class="btn">⛶ Quét QR CCCD</span> (camera hoặc dán chuỗi) để tự điền, hoặc <b>Tìm bệnh nhân cũ</b> theo tên / mã BN.</li>
+          <li><b>Chọn xét nghiệm:</b> gõ tìm rồi thêm, hoặc bấm một <b>combo</b> dựng sẵn (Khám tổng quát, Tầm soát tiểu đường, Tiền phẫu) để thêm cả cụm.</li>
+          <li>Kiểm tra giỏ: đổi <b>loại mẫu</b>, <b>số lượng</b> nếu cần.</li>
+          <li>Bấm <span class="btn">Gửi chỉ định</span> → hệ thống sinh <b>mã SID</b> và mã bệnh nhân, hiện phiếu.</li>
+        </ol>
+        <div class="tip"><span class="i">✓</span><div>Mã BN tự sinh nếu để trống. Email không bắt buộc, nhưng nếu nhập phải đúng định dạng.</div></div>
+      </div>
+      <div class="task">
+        <h3>Gửi mẫu tới phòng XN <span class="pin">Theo dõi &amp; kết quả</span></h3>
+        <p class="lead">Sau khi soạn mẫu, phòng khám tự gửi mẫu đi.</p>
+        <ol class="steps">
+          <li>Mở phiếu đang ở trạng thái <b>Đã soạn mẫu</b>.</li>
+          <li>Bấm <span class="btn">➤ Gửi mẫu</span>, chọn <b>hình thức gửi</b> (Trực tiếp / Nhà xe / Grab) và nhập <b>mã vận đơn</b>.</li>
+          <li>Xác nhận → phiếu chuyển sang <b>Đã gửi</b>. Phòng XN nhận được sẽ chuyển tiếp.</li>
+        </ol>
+      </div>
+      <div class="task">
+        <h3>Theo dõi, in tem &amp; tải kết quả <span class="pin">Theo dõi &amp; kết quả</span></h3>
+        <ol class="steps">
+          <li>Tìm/lọc phiếu theo trạng thái; mở phiếu để xem xét nghiệm, mã SID và tiến trình.</li>
+          <li>Bấm <span class="btn">⎙ In SID</span> → chọn SID và số bản in → in tem mã vạch dán ống mẫu.</li>
+          <li>Khi có kết quả, bấm <span class="btn">⭳ Tải kết quả</span> để tải file về.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LAB ================= -->
+  <section class="role role-lab" id="lab">
+    <div class="role-head">
+      <div class="role-badge">🔬</div>
+      <div><h2>Phòng xét nghiệm</h2><div class="sub">Duyệt giá, lấy &amp; nhận mẫu, chạy &amp; trả kết quả</div></div>
+    </div>
+    <div class="role-menu">
+      <span class="lbl">Menu</span>
+      <span class="chip">Danh mục &amp; giá niêm yết</span><span class="chip">Duyệt giá đề nghị</span><span class="chip">Chỉ định &amp; trả kết quả</span>
+    </div>
+    <div class="tasks">
+      <div class="task">
+        <h3>Tra danh mục &amp; duyệt giá <span class="pin">Danh mục · Duyệt giá</span></h3>
+        <ol class="steps">
+          <li><b>Danh mục &amp; giá niêm yết:</b> tra cứu toàn bộ xét nghiệm, lọc theo nhóm và nhà cung cấp.</li>
+          <li><b>Duyệt giá đề nghị:</b> xem giá niêm yết / đề nghị / chênh lệch của bác sĩ; bấm <span class="btn">Chốt</span> hoặc <span class="btn">Từ chối</span> từng dòng, hoặc <span class="btn">Chốt tất cả</span> cả gói.</li>
+        </ol>
+      </div>
+      <div class="task">
+        <h3>Phân công NV đến lấy mẫu (khách lẻ) <span class="pin">Chỉ định &amp; trả kết quả</span></h3>
+        <p class="lead">Phiếu khách lẻ ở trạng thái <b>Chờ lấy mẫu</b> — phòng XN cử nhân viên đến tận nơi.</p>
+        <ol class="steps">
+          <li>Mở phiếu khách lẻ, thấy dải nhắc <b>“cần phân công nhân viên đến lấy mẫu”</b>.</li>
+          <li>Bấm <span class="btn">Phân công NV lấy mẫu</span>, nhập <b>nhân viên</b>, giờ hẹn, nơi lấy.</li>
+          <li>Bấm <span class="btn">Phân công &amp; sinh SID</span> → phiếu chuyển <b>Đã soạn mẫu</b> và <b>sinh SID</b> để in tem cho NV mang đi.</li>
+        </ol>
+      </div>
+      <div class="task">
+        <h3>Nhận mẫu, đánh giá &amp; cập nhật tiến trình <span class="pin">Chỉ định &amp; trả kết quả</span></h3>
+        <ol class="steps">
+          <li>Trong chi tiết phiếu, bấm các chip <b>Tiến trình mẫu</b> để chuyển trạng thái (Đã nhận, Đang chạy…).</li>
+          <li>Với từng mẫu, bấm <span class="btn">Đạt</span> hoặc <span class="btn">Không đạt</span> để đánh giá <b>chất lượng (QC)</b>.</li>
+          <li>Điền <b>Tiến trình mẫu chi tiết</b> (nơi/người/giờ lấy – gửi – nhận, shipper) rồi <span class="btn">Lưu tiến trình</span>.</li>
+          <li>Bấm <span class="btn">⎙ In SID</span> để in tem khi cần.</li>
+        </ol>
+      </div>
+      <div class="task">
+        <h3>Trả kết quả <span class="pin">Chỉ định &amp; trả kết quả</span></h3>
+        <ol class="steps">
+          <li>Mở phiếu, bấm <span class="btn">⭱ Tải kết quả lên</span> và chọn file (PDF/ảnh).</li>
+          <li>Phiếu tự chuyển sang <b>Có kết quả</b>; bác sĩ / khách lẻ tải được ngay.</li>
+        </ol>
+        <div class="tip"><span class="i">!</span><div>Mọi lần tải kết quả đều được ghi nhật ký. Chỉ người của phiếu đó (hoặc phòng XN) mới tải được.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RETAIL ================= -->
+  <section class="role role-retail" id="retail">
+    <div class="role-head">
+      <div class="role-badge">🧑</div>
+      <div><h2>Khách lẻ</h2><div class="sub">Tự đặt xét nghiệm cho bản thân và theo dõi kết quả</div></div>
+    </div>
+    <div class="role-menu">
+      <span class="lbl">Menu</span>
+      <span class="chip">Đặt xét nghiệm</span><span class="chip">Theo dõi kết quả</span>
+    </div>
+    <div class="tasks">
+      <div class="task">
+        <h3>Đặt xét nghiệm <span class="pin">Đặt xét nghiệm</span></h3>
+        <ol class="steps">
+          <li>Nhập thông tin cá nhân (có thể bấm <span class="btn">⛶ Quét QR CCCD</span> để điền nhanh).</li>
+          <li>Gõ tìm và thêm xét nghiệm, hoặc chọn một <b>combo</b> dựng sẵn.</li>
+          <li>Bấm <span class="btn">Đặt xét nghiệm</span> để gửi.</li>
+        </ol>
+        <div class="tip"><span class="i">✓</span><div>Bạn <b>không cần tự đem mẫu đi</b> — phòng xét nghiệm sẽ cử nhân viên đến tận nơi lấy mẫu.</div></div>
+      </div>
+      <div class="task">
+        <h3>Theo dõi &amp; tải kết quả <span class="pin">Theo dõi kết quả</span></h3>
+        <ol class="steps">
+          <li>Mở phiếu để xem tiến trình: chờ lấy mẫu → đã lấy → đang chạy → có kết quả.</li>
+          <li>Khi xong, bấm <span class="btn">⭳ Tải kết quả</span> để tải phiếu kết quả về.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FLOW ================= -->
+  <section class="role" id="flow" style="scroll-margin-top:82px">
+    <h2 style="font-size:22px;font-weight:800;margin:52px 0 4px">Trạng thái phiếu &amp; hai luồng xử lý</h2>
+    <p style="color:var(--muted);margin:0 0 4px">Mọi phiếu đi qua sáu trạng thái. Hai đầu vào khác nhau nhưng hợp lưu tại “Đã nhận”.</p>
+    <div class="flow-wrap">
+      <div class="pipe">
+        <div class="stage"><b>Chờ lấy mẫu</b><span>Ordered</span><small>Khách lẻ vừa đặt</small></div>
+        <div class="stage"><b>Đã soạn mẫu</b><span>Collected</span><small>Đã lấy · có SID</small></div>
+        <div class="stage"><b>Đã gửi</b><span>Sent</span><small>Phòng khám gửi</small></div>
+        <div class="stage"><b>Đã nhận</b><span>Received</span><small>PXN nhận + QC</small></div>
+        <div class="stage"><b>Đang chạy</b><span>Running</span><small>Đang phân tích</small></div>
+        <div class="stage"><b>Có kết quả</b><span>Resulted</span><small>Tải file được</small></div>
+      </div>
+      <div class="lanes">
+        <div class="lane retail"><b>Khách lẻ</b><p>Đặt → <b>PXN cử NV đến lấy</b> → Đã soạn mẫu → mang mẫu về → Đã nhận. Không có bước “Đã gửi”.</p></div>
+        <div class="lane doctor"><b>Bác sĩ / Phòng khám</b><p>Chỉ định (có SID) → <b>tự gửi mẫu</b> → Đã gửi → chuyển tới PXN → Đã nhận.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <b style="color:var(--ink)">LabLink</b> — Hướng dẫn sử dụng theo vai trò · Menu và nút hiển thị theo quyền của từng tài khoản.
+  Nếu thiếu chức năng so với tài liệu, liên hệ quản trị để kiểm tra nhóm/quyền.
+</footer>

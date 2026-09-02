@@ -1,0 +1,153 @@
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.search {
+  flex: 1;
+  min-width: 200px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-body);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 9px 12px;
+}
+.search:focus {
+  outline: none;
+  border-color: var(--action);
+}
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--text-label);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+}
+.chip:hover {
+  background: var(--surface-1);
+}
+.chipActive {
+  background: var(--action-soft);
+  border-color: var(--action-soft);
+  color: var(--action-hover);
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.cardHead:hover {
+  background: var(--surface-2);
+}
+.orderNo {
+  font-weight: 700;
+  color: var(--text-title);
+  font-size: 14px;
+}
+.patient {
+  color: var(--text-body);
+  font-size: 13.5px;
+  flex: 1;
+}
+.maBN {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+.total {
+  font-weight: 700;
+  color: var(--text-title);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.srcDoctor { background: var(--action-soft); color: var(--action-hover); }
+.srcRetail { background: #fdf3e3; color: var(--warning-text); }
+
+.stageOrdered { background: var(--surface-4); color: var(--text-label); }
+.stageCollected { background: #e3edfd; color: #2456c9; }
+.stageSent { background: #eae7fb; color: #5a4bd6; }
+.stageReceived { background: #e9f1fb; color: #2f6fb0; }
+.stageRunning { background: #fdf3e3; color: var(--warning-text); }
+.stageResulted { background: var(--success-soft); color: var(--success-text); }
+
+.detail {
+  border-top: 1px solid var(--border-2);
+  padding: 14px 16px;
+  background: var(--surface-2);
+}
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .detailGrid { grid-template-columns: 1fr; }
+}
+.blockTitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.itemRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-2);
+}
+.itemRow:last-child { border-bottom: none; }
+.sids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sidChip {
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--sid);
+  background: var(--sid-soft);
+  border: 1px solid var(--sid-border);
+  border-radius: 8px;
+  padding: 4px 9px;
+}
+.state {
+  padding: 36px;
+  text-align: center;
+  color: var(--text-muted);
+}

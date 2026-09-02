@@ -1,0 +1,47 @@
+<svg width="680" height="520" viewBox="0 0 680 520" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Luồng trạng thái phiếu xét nghiệm LabLink</title>
+<style>
+  .t{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;font-weight:600}
+  .ts{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:12px;font-weight:500}
+  .lbl{fill:#1e2a44}.mut{fill:#5b6b85}
+  .box{fill:#f3f6fb;stroke:#dbe2ec;stroke-width:1}
+  .hl{fill:#eef4ff;stroke:#2563eb;stroke-width:2}
+  .arr{stroke:#b5c1d4;stroke-width:2;fill:none}.ah{fill:#b5c1d4}
+  .pk{fill:#dbe6fb}.pkt{fill:#1d4ed8}
+  .pxn{fill:#d9f0ea}.pxnt{fill:#0b7a68}
+  .au{fill:#e7ebf2}.aut{fill:#5b6b85}
+</style>
+<rect x="0" y="0" width="680" height="520" fill="#ffffff"/>
+<circle cx="150" cy="22" r="5" fill="#2563eb"/><text class="ts lbl" x="160" y="26">Phòng khám</text>
+<circle cx="290" cy="22" r="5" fill="#0f9d8b"/><text class="ts lbl" x="300" y="26">Phòng XN</text>
+<circle cx="415" cy="22" r="5" fill="#8a97ab"/><text class="ts lbl" x="425" y="26">Tự động</text>
+<line class="arr" x1="340" y1="90"  x2="340" y2="130"/><polygon class="ah" points="334,123 346,123 340,131"/>
+<line class="arr" x1="340" y1="172" x2="340" y2="212"/><polygon class="ah" points="334,205 346,205 340,213"/>
+<line class="arr" x1="340" y1="254" x2="340" y2="294"/><polygon class="ah" points="334,287 346,287 340,295"/>
+<line class="arr" x1="340" y1="336" x2="340" y2="376"/><polygon class="ah" points="334,369 346,369 340,377"/>
+<line class="arr" x1="340" y1="418" x2="340" y2="458"/><polygon class="ah" points="334,451 346,451 340,459"/>
+<rect class="box" x="220" y="48"  width="240" height="42" rx="10"/>
+<text class="t lbl" x="340" y="67" text-anchor="middle">Chờ lấy mẫu</text><text class="ts mut" x="340" y="82" text-anchor="middle">Ordered</text>
+<rect class="box" x="220" y="130" width="240" height="42" rx="10"/>
+<text class="t lbl" x="340" y="149" text-anchor="middle">Đã soạn mẫu</text><text class="ts mut" x="340" y="164" text-anchor="middle">Collected · SID đã sinh</text>
+<rect class="hl" x="220" y="212" width="240" height="42" rx="10"/>
+<text class="t lbl" x="340" y="231" text-anchor="middle">Đã gửi</text><text class="ts mut" x="340" y="246" text-anchor="middle">Sent</text>
+<rect class="box" x="220" y="294" width="240" height="42" rx="10"/>
+<text class="t lbl" x="340" y="313" text-anchor="middle">Đã nhận</text><text class="ts mut" x="340" y="328" text-anchor="middle">Received · QC mẫu</text>
+<rect class="box" x="220" y="376" width="240" height="42" rx="10"/>
+<text class="t lbl" x="340" y="395" text-anchor="middle">Đang chạy</text><text class="ts mut" x="340" y="410" text-anchor="middle">Running</text>
+<rect class="box" x="220" y="458" width="240" height="42" rx="10"/>
+<text class="t lbl" x="340" y="477" text-anchor="middle">Có kết quả</text><text class="ts mut" x="340" y="492" text-anchor="middle">Resulted · tải file KQ</text>
+<rect class="pxn" x="256" y="98"  width="168" height="24" rx="12"/><text class="ts pxnt" x="340" y="114" text-anchor="middle">Lấy &amp; soạn mẫu</text>
+<rect class="pk"  x="256" y="180" width="168" height="24" rx="12"/><text class="ts pkt" x="340" y="196" text-anchor="middle">Phòng khám gửi mẫu</text>
+<rect class="pxn" x="256" y="262" width="168" height="24" rx="12"/><text class="ts pxnt" x="340" y="278" text-anchor="middle">PXN nhận + QC</text>
+<rect class="pxn" x="256" y="344" width="168" height="24" rx="12"/><text class="ts pxnt" x="340" y="360" text-anchor="middle">PXN chạy mẫu</text>
+<rect class="au"  x="256" y="426" width="168" height="24" rx="12"/><text class="ts aut" x="340" y="442" text-anchor="middle">Trả KQ (tự động)</text>
+<rect class="pk" x="40" y="57"  width="150" height="24" rx="8"/><text class="ts pkt" x="115" y="73" text-anchor="middle">Khách lẻ tạo phiếu</text>
+<line class="arr" x1="190" y1="69"  x2="214" y2="69"/><polygon class="ah" points="214,64 214,74 222,69"/>
+<rect class="pk" x="40" y="139" width="150" height="24" rx="8"/><text class="ts pkt" x="115" y="155" text-anchor="middle">Bác sĩ tạo phiếu</text>
+<line class="arr" x1="190" y1="151" x2="214" y2="151"/><polygon class="ah" points="214,146 214,156 222,151"/>
+<line x1="460" y1="233" x2="486" y2="233" stroke="#2563eb" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="ts mut" x="490" y="229">kèm: hình thức gửi</text>
+<text class="ts mut" x="490" y="245">+ mã vận đơn</text>
+</svg>
