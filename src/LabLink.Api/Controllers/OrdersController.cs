@@ -40,6 +40,24 @@ public class OrdersController : AdminControllerBase
         return o is null ? NotFound() : Ok(o);
     }
 
+    /// <summary>Phiếu đầy đủ để xem/sửa (kèm chi tiết bệnh nhân + cờ Editable).</summary>
+    [HttpGet("{id:guid}/full")]
+    [HasPermission(Permissions.OrderRead)]
+    public async Task<ActionResult<OrderFullDto>> GetFull(Guid id, CancellationToken ct)
+    {
+        var o = await _svc.GetFullAsync(id, ActorId, SeeAll, ct);
+        return o is null ? NotFound() : Ok(o);
+    }
+
+    /// <summary>Sửa phiếu khi chưa gửi PXN (hồ sơ BN + phiếu + xét nghiệm).</summary>
+    [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.OrderCreate)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrderRequest req, CancellationToken ct)
+    {
+        var r = await _svc.UpdateAsync(id, ActorId, SeeAll, req, ct);
+        return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
+    }
+
     /// <summary>Lab cập nhật trạng thái phiếu (tiến trình mẫu).</summary>
     [HttpPost("{id:guid}/stage")]
     [HasPermission(Permissions.SampleReceive)]

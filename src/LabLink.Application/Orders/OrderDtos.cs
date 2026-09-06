@@ -24,7 +24,7 @@ public record CreateOrderRequest(
     IReadOnlyList<OrderItemInput> Items);
 
 public record OrderItemDto(
-    Guid Id, string TestCode, string TestName, string SampleType, int Qty, long UnitPrice);
+    Guid Id, Guid LabTestId, string TestCode, string TestName, string SampleType, int Qty, long UnitPrice);
 
 public record SampleDto(Guid Id, string Sid, string SampleType, string? TubeType, string Quality);
 
@@ -44,6 +44,25 @@ public record OrderDto(
     bool HasResult,
     string? ResultFileName,
     ProgressDto Progress);
+
+public record PatientDetailDto(
+    Guid Id, string MaBN, string FullName, DateOnly? Dob,
+    string? Gender, string? Phone, string? Email, string? NationalId,
+    string? Bhyt, string? Address, string? Note);
+
+/// <summary>Phiếu đầy đủ (xem/sửa): kèm chi tiết bệnh nhân + phòng khám/bác sĩ + cờ Editable.</summary>
+public record OrderFullDto(
+    Guid Id, string OrderNo, string Source, string Stage, bool Editable,
+    string? ClinicName, string? DoctorCode, string? Diagnosis, string? Note,
+    long Total, DateTimeOffset CreatedAt,
+    PatientDetailDto Patient,
+    IReadOnlyList<OrderItemDto> Items,
+    IReadOnlyList<SampleDto> Samples,
+    bool HasResult, string? ResultFileName, ProgressDto Progress);
+
+public record UpdateOrderRequest(
+    PatientInput Patient, string? ClinicName, string? DoctorCode,
+    string? Diagnosis, string? Note, IReadOnlyList<OrderItemInput> Items);
 
 public record ProgressDto(
     string? CollectPlace, string? CollectBy, DateTimeOffset? CollectAt,

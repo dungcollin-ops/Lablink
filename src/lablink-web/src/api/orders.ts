@@ -3,6 +3,7 @@ import { API_BASE } from "./config";
 
 export interface OrderItemDto {
   id: string;
+  labTestId: string;
   testCode: string;
   testName: string;
   sampleType: string;
@@ -108,6 +109,53 @@ export const listOrders = (token: string | undefined, query?: string, stage?: st
 
 export const getOrder = (token: string | undefined, id: string) =>
   api<OrderDto>(token, `/api/orders/${id}`);
+
+export interface PatientDetail {
+  id: string;
+  maBN: string;
+  fullName: string;
+  dob?: string | null;
+  gender?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  nationalId?: string | null;
+  bhyt?: string | null;
+  address?: string | null;
+  note?: string | null;
+}
+export interface OrderFull {
+  id: string;
+  orderNo: string;
+  source: string;
+  stage: string;
+  editable: boolean;
+  clinicName?: string | null;
+  doctorCode?: string | null;
+  diagnosis?: string | null;
+  note?: string | null;
+  total: number;
+  createdAt: string;
+  patient: PatientDetail;
+  items: OrderItemDto[];
+  samples: SampleDto[];
+  hasResult: boolean;
+  resultFileName?: string | null;
+  progress: ProgressDto;
+}
+export interface UpdateOrderRequest {
+  patient: PatientInput;
+  clinicName?: string;
+  doctorCode?: string;
+  diagnosis?: string;
+  note?: string;
+  items: OrderItemInput[];
+}
+
+export const getOrderFull = (token: string | undefined, id: string) =>
+  api<OrderFull>(token, `/api/orders/${id}/full`);
+
+export const updateOrder = (token: string | undefined, id: string, body: UpdateOrderRequest) =>
+  api<OrderDto>(token, `/api/orders/${id}`, { method: "PUT", body: JSON.stringify(body) });
 
 export const searchPatients = (token: string | undefined, q: string) =>
   api<PatientSearch[]>(token, `/api/patients/search?q=${encodeURIComponent(q)}`);

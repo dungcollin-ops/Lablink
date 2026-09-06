@@ -10,6 +10,7 @@ import {
 import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
+import OrderLookup from "../components/OrderLookup";
 import a from "./admin.module.css";
 import s from "./OrderForm.module.css";
 
@@ -229,6 +230,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
       <div className={a.head}>
         <div className={a.h1}>{isDoctor ? "Chỉ định cho bệnh nhân" : "Đặt xét nghiệm"}</div>
       </div>
+
+      {isDoctor && <OrderLookup session={session} />}
 
       <div className={s.layout}>
         <div>

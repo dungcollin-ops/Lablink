@@ -11,6 +11,12 @@ public interface IOrderService
 
     Task<OrderDto?> GetAsync(Guid id, Guid userId, bool seeAll, CancellationToken ct = default);
 
+    /// <summary>Phiếu đầy đủ để xem/sửa (kèm chi tiết bệnh nhân). Null nếu không thấy/không có quyền.</summary>
+    Task<OrderFullDto?> GetFullAsync(Guid id, Guid userId, bool seeAll, CancellationToken ct = default);
+
+    /// <summary>Sửa phiếu khi CHƯA gửi PXN (Đã soạn mẫu trở về trước): cập nhật hồ sơ BN (danh mục) + phiếu + XN/SID.</summary>
+    Task<OrderResult> UpdateAsync(Guid id, Guid userId, bool seeAll, UpdateOrderRequest req, CancellationToken ct = default);
+
     /// <summary>Lab cập nhật trạng thái phiếu (tiến trình mẫu).</summary>
     Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, CancellationToken ct = default);
 

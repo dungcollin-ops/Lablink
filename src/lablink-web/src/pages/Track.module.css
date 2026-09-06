@@ -42,6 +42,28 @@
   border-color: var(--action-soft);
   color: var(--action-hover);
 }
+/* Chip trạng thái bị khoá (không phải bước kế hợp lệ) */
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.chip:disabled:hover {
+  background: var(--white);
+}
+/* Trạng thái hiện tại vẫn hiện rõ dù không bấm được */
+.chipActive:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.chipActive:disabled:hover {
+  background: var(--action-soft);
+}
+/* Bước kế PXN được phép bấm — làm nổi để dễ thấy */
+.chipNext {
+  border-color: var(--action);
+  color: var(--action-hover);
+  box-shadow: 0 0 0 2px var(--action-soft);
+}
 
 .card {
   background: var(--white);

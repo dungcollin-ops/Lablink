@@ -35,6 +35,16 @@ const STAGE_CLS: Record<string, string> = {
   Received: t.stageReceived, Running: t.stageRunning, Resulted: t.stageResulted,
 };
 const QC_LABEL: Record<string, string> = { Unset: "Chưa đánh giá", Pass: "Đạt", Fail: "Không đạt" };
+const STAGE_ORDER = STAGES.map((s) => s.key);
+
+// PXN chỉ được chuyển tới bước bàn giao trở đi — không kéo lùi về phần luồng của bên chỉ định.
+// Trả về bước kế hợp lệ, hoặc null nếu không có bước nào PXN được bấm ở trạng thái hiện tại.
+function pxnNextStage(source: string, current: string): string | null {
+  if (current === "Sent") return "Received";                              // bác sĩ đã gửi → PXN nhận
+  if (current === "Collected" && source === "Retail") return "Received";  // khách lẻ đã lấy mẫu → PXN nhận
+  if (current === "Received") return "Running";                           // đã nhận → đang chạy
+  return null; // Ordered / Collected(bác sĩ): dùng nút riêng · Running → Resulted: tự động khi upload KQ
+}
 
 export default function LabOrders({ session }: { session: Session }) {
   const token = session.token;
@@ -160,16 +170,31 @@ export default function LabOrders({ session }: { session: Session }) {
                   )}
                   <div className={t.blockTitle}>Tiến trình mẫu</div>
                   <div className={t.chips} style={{ marginBottom: 14 }}>
-                    {STAGES.map((sg) => (
-                      <button
-                        key={sg.key}
-                        disabled={busy}
-                        className={`${t.chip} ${detail.stage === sg.key ? t.chipActive : ""}`}
-                        onClick={() => changeStage(o.id, sg.key)}
-                      >
-                        {sg.label}
-                      </button>
-                    ))}
+                    {(() => {
+                      const next = pxnNextStage(detail.source, detail.stage);
+                      const curIdx = STAGE_ORDER.indexOf(detail.stage);
+                      return STAGES.map((sg) => {
+                        const isCurrent = detail.stage === sg.key;
+                        const isNext = sg.key === next;
+                        const passed = STAGE_ORDER.indexOf(sg.key) < curIdx;
+                        return (
+                          <button
+                            key={sg.key}
+                            disabled={busy || !isNext}
+                            title={
+                              isNext ? "Bấm để chuyển sang bước này"
+                                : isCurrent ? "Trạng thái hiện tại"
+                                  : passed ? "Bước bên chỉ định đã đi qua — không quay lại"
+                                    : "Chưa tới bước này"
+                            }
+                            className={`${t.chip} ${isCurrent ? t.chipActive : ""} ${isNext ? t.chipNext : ""}`}
+                            onClick={() => isNext && changeStage(o.id, sg.key)}
+                          >
+                            {passed ? "🔒 " : ""}{sg.label}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
 
                   <div className={t.detailGrid}>

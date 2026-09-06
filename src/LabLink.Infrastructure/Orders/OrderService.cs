@@ -161,10 +161,139 @@ public partial class OrderService : IOrderService
         return Map(o, await ResultFileNameAsync(o.Id, ct));
     }
 
+    public async Task<OrderFullDto?> GetFullAsync(Guid id, Guid userId, bool seeAll, CancellationToken ct = default)
+    {
+        var o = await _db.Orders.AsNoTracking()
+            .Include(x => x.Items)
+            .Include(x => x.Samples)
+            .Include(x => x.Patient)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (o is null) return null;
+        if (!seeAll && o.CreatedById != userId) return null;
+        return MapFull(o, await ResultFileNameAsync(o.Id, ct));
+    }
+
+    public async Task<OrderResult> UpdateAsync(Guid id, Guid userId, bool seeAll, UpdateOrderRequest req, CancellationToken ct = default)
+    {
+        var order = await _db.Orders
+            .Include(o => o.Items)
+            .Include(o => o.Samples)
+            .Include(o => o.Patient)
+            .FirstOrDefaultAsync(o => o.Id == id, ct);
+        if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
+        if (!seeAll && order.CreatedById != userId) return OrderResult.Fail("Không có quyền trên phiếu này.");
+        if ((int)order.Stage >= (int)OrderStage.Sent)
+            return OrderResult.Fail("Phiếu đã gửi phòng xét nghiệm — không sửa được nữa.");
+
+        // ---- Validate ----
+        if (req.Patient is null || string.IsNullOrWhiteSpace(req.Patient.FullName))
+            return OrderResult.Fail("Thiếu họ tên bệnh nhân.");
+        if (req.Items is null || req.Items.Count == 0)
+            return OrderResult.Fail("Cần ít nhất 1 xét nghiệm.");
+        if (req.Items.Any(i => i.Qty < 1))
+            return OrderResult.Fail("Số lượng phải ≥ 1.");
+
+        var email = req.Patient.Email?.Replace(" ", "").ToLowerInvariant();
+        if (!string.IsNullOrEmpty(email) && !EmailRegex().IsMatch(email))
+            return OrderResult.Fail("Email không hợp lệ — ví dụ: ten@benhvien.vn");
+
+        var ids = req.Items.Select(i => i.LabTestId).Distinct().ToList();
+        var tests = await _db.LabTests.Where(t => ids.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t, ct);
+        if (ids.Any(x => !tests.ContainsKey(x)))
+            return OrderResult.Fail("Có xét nghiệm không tồn tại.");
+
+        // ---- Giá chốt (deal) cho bác sĩ ----
+        var dealPrices = new Dictionary<Guid, long>();
+        if (order.Source == OrderSource.Doctor)
+        {
+            dealPrices = await _db.PriceDeals.AsNoTracking()
+                .Where(d => d.Status == DealStatus.Approved
+                         && d.Batch.ProposedById == order.CreatedById
+                         && ids.Contains(d.LabTestId))
+                .OrderByDescending(d => d.DecidedAt)
+                .GroupBy(d => d.LabTestId)
+                .Select(g => new { g.Key, Price = g.First().ProposedPrice })
+                .ToDictionaryAsync(x => x.Key, x => x.Price, ct);
+        }
+
+        // ---- Cập nhật hồ sơ bệnh nhân (DANH MỤC BN) + snapshot trên phiếu ----
+        var p = order.Patient;
+        p.FullName = req.Patient.FullName.Trim();
+        p.Dob = req.Patient.Dob;
+        p.Gender = req.Patient.Gender;
+        p.Phone = req.Patient.Phone;
+        p.Email = email;
+        p.NationalId = req.Patient.NationalId;
+        p.Bhyt = req.Patient.Bhyt;
+        p.Address = req.Patient.Address;
+        p.Note = req.Patient.Note;
+        order.PatientName = p.FullName;
+        order.PatientMaBN = p.MaBN;
+
+        // ---- Field THEO PHIẾU ----
+        order.ClinicName = req.ClinicName;
+        order.DoctorCode = req.DoctorCode;
+        order.Diagnosis = req.Diagnosis;
+        order.Note = req.Note;
+
+        // ---- Dựng lại dòng chỉ định + tổng ----
+        var hadSamples = order.Samples.Count > 0;
+        _db.RemoveRange(order.Items.ToList());
+        long total = 0;
+        var newItems = new List<OrderItem>();
+        foreach (var i in req.Items)
+        {
+            var test = tests[i.LabTestId];
+            var price = order.Source == OrderSource.Doctor && dealPrices.TryGetValue(test.Id, out var dp)
+                ? dp : test.ListPrice;
+            var sampleType = !string.IsNullOrWhiteSpace(i.SampleType)
+                ? i.SampleType!.Trim()
+                : (test.Samples.FirstOrDefault() ?? "—");
+            total += price * i.Qty;
+            newItems.Add(new OrderItem
+            {
+                OrderId = order.Id,
+                LabTestId = test.Id, TestCode = test.Code, TestName = test.Name,
+                SampleType = sampleType, Qty = i.Qty, UnitPrice = price,
+            });
+        }
+        _db.AddRange(newItems);
+        order.Total = total;
+
+        // ---- Đồng bộ SID/mẫu (1 loại mẫu = 1 SID). Chỉ áp cho phiếu ĐÃ có SID sẵn. ----
+        var neededTypes = newItems.Select(x => x.SampleType).Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
+        if (neededTypes.Count == 0) neededTypes.Add("—");
+        var existingTypes = order.Samples.Select(s => s.SampleType).ToHashSet();
+        var removeSamples = order.Samples.Where(s => !neededTypes.Contains(s.SampleType)).ToList();
+        if (removeSamples.Count > 0) _db.RemoveRange(removeSamples);
+        if (hadSamples)
+        {
+            var missingTypes = neededTypes.Where(t => !existingTypes.Contains(t)).ToList();
+            if (missingTypes.Count > 0)
+            {
+                var added = await BuildSamplesWithSidAsync(missingTypes, ct);
+                foreach (var sm in added) { sm.OrderId = order.Id; _db.Samples.Add(sm); }
+            }
+        }
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = userId, Action = "order.update",
+            ObjectType = "Order", ObjectId = order.Id.ToString(),
+            Detail = $"{order.OrderNo} · sửa · {newItems.Count} XN",
+        });
+        await _db.SaveChangesAsync(ct);
+        return OrderResult.Success(await GetTracked(order.Id, ct));
+    }
+
     public async Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, CancellationToken ct = default)
     {
         if (!Enum.TryParse<OrderStage>(stage, true, out var st))
             return OrderResult.Fail("Trạng thái không hợp lệ.");
+        // "Có kết quả" chỉ đạt được khi tải file kết quả lên (UploadResultAsync) — không cho set tay.
+        if (st == OrderStage.Resulted)
+            return OrderResult.Fail("Chỉ chuyển sang \"Có kết quả\" bằng cách tải file kết quả lên.");
         var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
 
@@ -381,7 +510,24 @@ public partial class OrderService : IOrderService
         o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(),
         o.PatientName, o.PatientMaBN, o.Diagnosis, o.Note, o.Total, o.CreatedAt,
         o.Items.Select(i => new OrderItemDto(
-            i.Id, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
+            i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
+        o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
+            s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString())).ToList(),
+        resultFileName != null, resultFileName,
+        new ProgressDto(
+            o.CollectPlace, o.CollectBy, o.CollectAt,
+            o.SendVia, o.TrackingNo, o.Shipper, o.SendAt,
+            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt));
+
+    private static OrderFullDto MapFull(Order o, string? resultFileName) => new(
+        o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(), (int)o.Stage < (int)OrderStage.Sent,
+        o.ClinicName, o.DoctorCode, o.Diagnosis, o.Note, o.Total, o.CreatedAt,
+        new PatientDetailDto(
+            o.Patient.Id, o.Patient.MaBN, o.Patient.FullName, o.Patient.Dob,
+            o.Patient.Gender, o.Patient.Phone, o.Patient.Email, o.Patient.NationalId,
+            o.Patient.Bhyt, o.Patient.Address, o.Patient.Note),
+        o.Items.Select(i => new OrderItemDto(
+            i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
             s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString())).ToList(),
         resultFileName != null, resultFileName,

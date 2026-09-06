@@ -64,7 +64,11 @@ Hai luồng **hợp lưu tại `Đã nhận`**, sau đó đi chung tới `Có k�
 ## 7. Quy tắc chuyển trạng thái
 - Đi **tuần tự tiến**: các nút hành động chỉ hiện ở đúng bước trước đó
   (vd nút "Gửi mẫu" chỉ hiện khi phiếu đang `Đã soạn mẫu`).
-- PXN có thể chỉnh trạng thái linh hoạt (quyền quản trị luồng), nhưng luồng chuẩn theo bảng trên.
+- **PXN không kéo lùi và không đụng phần luồng của bên chỉ định.** Ở màn PXN, dãy chip trạng thái chỉ cho bấm **đúng bước kế tiếp** theo loại phiếu; các bước khác khoá (bước đã qua hiện 🔒, không quay lại được):
+  - **Bác sĩ:** bên BS tự đẩy tới `Đã gửi`; PXN chỉ bấm từ `Đã nhận` trở đi (`Đã gửi → Đã nhận → Đang chạy`).
+  - **Khách lẻ:** PXN lấy mẫu bằng nút *Phân công NV lấy mẫu* (`Chờ lấy mẫu → Đã soạn mẫu`, sinh SID), rồi `Đã soạn mẫu → Đã nhận → Đang chạy`. Khách lẻ **không** có bước `Đã gửi`.
+  - `Có kết quả`: **tự động** khi PXN upload file kết quả — không bấm chip.
+- Logic bước kế: `pxnNextStage(source, stage)` trong `LabOrders.tsx` (khoá phía giao diện). Nếu cần siết chặt tuyệt đối, thêm kiểm tra tương ứng ở API `SetOrderStage`.
 
 ---
 ## Chênh lệch so với code hiện tại (cần build để khớp quy trình đã chốt)

@@ -43,7 +43,23 @@ try {
     param($p)
     $exists = Get-Service LabLink -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $p -Force | Out-Null
-    Expand-Archive -Path "C:\LabLink-deploy.zip" -DestinationPath $p -Force
+    $zipPath = "C:\LabLink-deploy.zip"
+    if (Get-Command Expand-Archive -ErrorAction SilentlyContinue) {
+      Expand-Archive -Path $zipPath -DestinationPath $p -Force
+    } else {
+      # VPS chạy PowerShell < 5.0 (không có Expand-Archive) → giải nén bằng .NET, ghi đè
+      Add-Type -AssemblyName System.IO.Compression.FileSystem
+      $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+      try {
+        foreach ($entry in $archive.Entries) {
+          if ([string]::IsNullOrEmpty($entry.Name)) { continue } # bỏ qua entry thư mục
+          $dest = Join-Path $p ($entry.FullName -replace '/', '\')
+          $destDir = Split-Path $dest -Parent
+          if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+          [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $dest, $true)
+        }
+      } finally { $archive.Dispose() }
+    }
     if (-not $exists) {
       New-Service -Name "LabLink" -BinaryPathName "$p\LabLink.Api.exe" -DisplayName "LabLink" -StartupType Automatic | Out-Null
     }
