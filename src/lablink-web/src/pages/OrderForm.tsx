@@ -10,12 +10,32 @@ import {
 import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
-import OrderLookup from "../components/OrderLookup";
 import a from "./admin.module.css";
 import s from "./OrderForm.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 const EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+
+// Ngày sinh: nội bộ nhập/hiển thị dd/mm/yyyy; API dùng ISO yyyy-MM-dd.
+const isoToVn = (iso?: string | null) => {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+};
+const vnToIso = (s: string) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s.trim());
+  if (!m) return "";
+  const d = +m[1], mo = +m[2];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+  return `${m[3]}-${m[2]}-${m[1]}`;
+};
+const maskDob = (raw: string) => {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += "/" + d.slice(2, 4);
+  if (d.length > 4) out += "/" + d.slice(4, 8);
+  return out;
+};
 
 interface Patient {
   maBN: string;
@@ -105,8 +125,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
     setPatient({
       ...emptyPatient,
       maBN: p.maBN,
-      fullName: p.fullName,
-      dob: p.dob ?? "",
+      fullName: (p.fullName ?? "").toUpperCase(),
+      dob: isoToVn(p.dob),
       gender: p.gender ?? "",
       phone: p.phone ?? "",
       address: p.address ?? "",
@@ -146,8 +166,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   function applyCccd(d: CccdData) {
     setPatient((p) => ({
       ...p,
-      fullName: d.fullName ?? p.fullName,
-      dob: d.dob ?? p.dob,
+      fullName: d.fullName ? d.fullName.toUpperCase() : p.fullName,
+      dob: d.dob ? isoToVn(d.dob) : p.dob,
       gender: d.gender === "Nam" || d.gender === "Nữ" ? d.gender : p.gender,
       nationalId: d.nationalId ?? p.nationalId,
       address: d.address ?? p.address,
@@ -171,8 +191,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
         source: mode,
         patient: {
           maBN: patient.maBN || undefined,
-          fullName: patient.fullName.trim(),
-          dob: patient.dob || undefined,
+          fullName: patient.fullName.trim().toUpperCase(),
+          dob: vnToIso(patient.dob) || undefined,
           gender: patient.gender || undefined,
           phone: patient.phone || undefined,
           email: email || undefined,
@@ -201,7 +221,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
     return (
       <div>
         <div className={a.head}>
-          <div className={a.h1}>{isDoctor ? "Chỉ định cho bệnh nhân" : "Đặt xét nghiệm"}</div>
+          <div className={a.h1}>{isDoctor ? "Chỉ định xét nghiệm" : "Đặt xét nghiệm"}</div>
         </div>
         <div className={s.success}>
           <div className={s.successTitle}>✓ Đã gửi chỉ định tới phòng xét nghiệm</div>
@@ -228,10 +248,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   return (
     <div>
       <div className={a.head}>
-        <div className={a.h1}>{isDoctor ? "Chỉ định cho bệnh nhân" : "Đặt xét nghiệm"}</div>
+        <div className={a.h1}>{isDoctor ? "Chỉ định xét nghiệm" : "Đặt xét nghiệm"}</div>
       </div>
-
-      {isDoctor && <OrderLookup session={session} />}
 
       <div className={s.layout}>
         <div>
@@ -272,19 +290,40 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
               )}
               <div className={s.field}>
                 <label className={s.label}>Họ tên *</label>
-                <input className={s.input} value={patient.fullName} onChange={(e) => set("fullName", e.target.value)} />
+                <input className={s.input} value={patient.fullName} onChange={(e) => set("fullName", e.target.value.toUpperCase())} style={{ textTransform: "uppercase" }} />
               </div>
               <div className={s.field}>
-                <label className={s.label}>Ngày sinh</label>
-                <input className={s.input} type="date" value={patient.dob} onChange={(e) => set("dob", e.target.value)} />
+                <label className={s.label}>Ngày tháng năm sinh</label>
+                <input
+                  className={s.input}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="dd/mm/yyyy"
+                  maxLength={10}
+                  value={patient.dob}
+                  onChange={(e) => set("dob", maskDob(e.target.value))}
+                />
               </div>
               <div className={s.field}>
                 <label className={s.label}>Giới tính</label>
-                <select className={s.select} value={patient.gender} onChange={(e) => set("gender", e.target.value)}>
-                  <option value="">—</option>
-                  <option value="Nam">Nam</option>
-                  <option value="Nữ">Nữ</option>
-                </select>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["Nam", "Nữ"].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => set("gender", g)}
+                      style={{
+                        flex: 1, padding: "9px 0", borderRadius: "var(--radius-control)", fontSize: 14,
+                        border: `1px solid ${patient.gender === g ? "var(--action)" : "var(--border-3)"}`,
+                        background: patient.gender === g ? "var(--action-soft)" : "var(--input-bg)",
+                        color: patient.gender === g ? "var(--action-hover)" : "var(--text-body)",
+                        fontWeight: patient.gender === g ? 600 : 500, cursor: "pointer",
+                      }}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className={s.field}>
                 <label className={s.label}>Điện thoại</label>

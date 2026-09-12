@@ -84,11 +84,8 @@ public partial class OrderService : IOrderService
             });
         }
 
-        // ---- Gom mẫu + sinh SID atomic (1 loại mẫu = 1 SID) ----
-        // Bác sĩ tự soạn mẫu → sinh SID ngay. Khách lẻ → SID sinh khi PXN phân công lấy mẫu.
-        var samples = source == OrderSource.Doctor
-            ? await BuildSamplesWithSidAsync(items.Select(x => x.SampleType), ct)
-            : new List<Sample>();
+        // ---- Gom mẫu + sinh SID atomic (1 loại mẫu = 1 SID). Sinh ngay khi tạo phiếu. ----
+        var samples = await BuildSamplesWithSidAsync(items.Select(x => x.SampleType), ct);
 
         // ---- Mã phiếu ----
         var orderSeq = await _seq.NextRangeAsync("ORDER", 1, ct);
@@ -96,7 +93,7 @@ public partial class OrderService : IOrderService
         {
             OrderNo = $"O-{orderSeq}",
             Source = source,
-            Stage = source == OrderSource.Doctor ? OrderStage.Collected : OrderStage.Ordered,
+            Stage = OrderStage.Ordered,
             PatientId = patient.Id,
             PatientName = patient.FullName,
             PatientMaBN = patient.MaBN,
@@ -109,6 +106,12 @@ public partial class OrderService : IOrderService
             Items = items,
             Samples = samples,
         };
+
+        order.Events.Add(new OrderEvent
+        {
+            Step = OrderStage.Ordered, ActorId = userId,
+            ActorName = await ActorNameAsync(userId, ct), At = DateTimeOffset.UtcNow,
+        });
 
         _db.Orders.Add(order);
         _db.AuditLogs.Add(new AuditLog
@@ -167,6 +170,7 @@ public partial class OrderService : IOrderService
             .Include(x => x.Items)
             .Include(x => x.Samples)
             .Include(x => x.Patient)
+            .Include(x => x.Events)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (o is null) return null;
         if (!seeAll && o.CreatedById != userId) return null;
@@ -182,8 +186,8 @@ public partial class OrderService : IOrderService
             .FirstOrDefaultAsync(o => o.Id == id, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
         if (!seeAll && order.CreatedById != userId) return OrderResult.Fail("Không có quyền trên phiếu này.");
-        if ((int)order.Stage >= (int)OrderStage.Sent)
-            return OrderResult.Fail("Phiếu đã gửi phòng xét nghiệm — không sửa được nữa.");
+        if ((int)order.Stage >= (int)OrderStage.Gathered)
+            return OrderResult.Fail("Phiếu đã chuyển cho phòng xét nghiệm — không sửa được nữa.");
 
         // ---- Validate ----
         if (req.Patient is null || string.IsNullOrWhiteSpace(req.Patient.FullName))
@@ -287,7 +291,7 @@ public partial class OrderService : IOrderService
         return OrderResult.Success(await GetTracked(order.Id, ct));
     }
 
-    public async Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, CancellationToken ct = default)
+    public async Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, string? by = null, CancellationToken ct = default)
     {
         if (!Enum.TryParse<OrderStage>(stage, true, out var st))
             return OrderResult.Fail("Trạng thái không hợp lệ.");
@@ -297,8 +301,13 @@ public partial class OrderService : IOrderService
         var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
 
+        var who = string.IsNullOrWhiteSpace(by) ? null : by.Trim();
+        if (st == OrderStage.Collected && who != null) { order.CollectBy = who; order.CollectAt = DateTimeOffset.UtcNow; }
+        if (st == OrderStage.Received && who != null) { order.ReceiveBy = who; order.ReceiveAt = DateTimeOffset.UtcNow; }
+
         order.Stage = st;
         order.UpdatedAt = DateTimeOffset.UtcNow;
+        _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = st, ActorId = actorId, ActorName = await ActorNameAsync(actorId, ct), At = DateTimeOffset.UtcNow, Note = who != null ? $"Người thực hiện: {who}" : null });
         _db.AuditLogs.Add(new AuditLog
         {
             UserId = actorId, Action = "order.stage",
@@ -346,6 +355,7 @@ public partial class OrderService : IOrderService
 
         order.Stage = OrderStage.Resulted;
         order.UpdatedAt = DateTimeOffset.UtcNow;
+        _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = OrderStage.Resulted, ActorId = actorId, ActorName = await ActorNameAsync(actorId, ct), At = DateTimeOffset.UtcNow });
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -415,6 +425,7 @@ public partial class OrderService : IOrderService
         order.CollectPlace = r.Place;
         order.Stage = OrderStage.Collected;
         order.UpdatedAt = DateTimeOffset.UtcNow;
+        _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = OrderStage.Collected, ActorId = actorId, ActorName = await ActorNameAsync(actorId, ct), At = DateTimeOffset.UtcNow });
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -437,8 +448,9 @@ public partial class OrderService : IOrderService
         order.TrackingNo = r.TrackingNo;
         order.Shipper = r.Shipper;
         order.SendAt = (r.SendAt ?? DateTimeOffset.UtcNow).ToUniversalTime();
-        order.Stage = OrderStage.Sent;
+        order.Stage = OrderStage.Gathered;
         order.UpdatedAt = DateTimeOffset.UtcNow;
+        _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = OrderStage.Gathered, ActorId = actorId, ActorName = await ActorNameAsync(actorId, ct), At = DateTimeOffset.UtcNow });
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -520,7 +532,7 @@ public partial class OrderService : IOrderService
             o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt));
 
     private static OrderFullDto MapFull(Order o, string? resultFileName) => new(
-        o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(), (int)o.Stage < (int)OrderStage.Sent,
+        o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(), (int)o.Stage < (int)OrderStage.Gathered,
         o.ClinicName, o.DoctorCode, o.Diagnosis, o.Note, o.Total, o.CreatedAt,
         new PatientDetailDto(
             o.Patient.Id, o.Patient.MaBN, o.Patient.FullName, o.Patient.Dob,
@@ -530,9 +542,14 @@ public partial class OrderService : IOrderService
             i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
             s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString())).ToList(),
+        o.Events.OrderBy(ev => ev.At).Select(ev => new OrderEventDto(
+            ev.Step.ToString(), ev.ActorName, ev.At, ev.Note)).ToList(),
         resultFileName != null, resultFileName,
         new ProgressDto(
             o.CollectPlace, o.CollectBy, o.CollectAt,
             o.SendVia, o.TrackingNo, o.Shipper, o.SendAt,
             o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt));
+
+    private async Task<string> ActorNameAsync(Guid userId, CancellationToken ct)
+        => (await _db.Users.Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync(ct)) ?? "";
 }

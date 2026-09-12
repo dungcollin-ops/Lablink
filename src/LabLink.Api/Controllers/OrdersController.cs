@@ -1,6 +1,7 @@
 using LabLink.Api.Authorization;
 using LabLink.Application.Orders;
 using LabLink.Domain.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LabLink.Api.Controllers;
@@ -58,14 +59,31 @@ public class OrdersController : AdminControllerBase
         return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
     }
 
-    /// <summary>Lab cập nhật trạng thái phiếu (tiến trình mẫu).</summary>
+    /// <summary>Chuyển trạng thái phiếu — mỗi bước cần đúng quyền của bước đó.</summary>
     [HttpPost("{id:guid}/stage")]
-    [HasPermission(Permissions.SampleReceive)]
+    [Authorize]
     public async Task<IActionResult> SetStage(Guid id, [FromBody] SetStageRequest req, CancellationToken ct)
     {
-        var r = await _svc.SetStageAsync(id, req.Stage, ActorId, ct);
+        // "Có kết quả" đi qua upload (service tự chặn). Các bước khác: cần đúng quyền.
+        if (req.Stage != "Resulted")
+        {
+            var required = RequiredPermForStage(req.Stage);
+            if (required is null || !HasPerm(required))
+                return StatusCode(403, new { message = "Bạn không có quyền thực hiện bước này." });
+        }
+        var r = await _svc.SetStageAsync(id, req.Stage, ActorId, req.By, ct);
         return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
     }
+
+    private static string? RequiredPermForStage(string stage) => stage switch
+    {
+        "Collected" => Permissions.SampleCollect,
+        "Gathered" => Permissions.SampleGather,
+        "Received" => Permissions.SampleReceive,
+        "HardCopySent" => Permissions.HardcopyDeliver,
+        "HardCopyReceived" => Permissions.HardcopyReceive,
+        _ => null,
+    };
 
     /// <summary>Lab đánh giá chất lượng 1 mẫu (Đạt/Không đạt).</summary>
     [HttpPost("samples/{sampleId:guid}/quality")]

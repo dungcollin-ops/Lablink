@@ -123,6 +123,12 @@ export interface PatientDetail {
   address?: string | null;
   note?: string | null;
 }
+export interface OrderEvent {
+  step: string;
+  actorName: string;
+  at: string;
+  note?: string | null;
+}
 export interface OrderFull {
   id: string;
   orderNo: string;
@@ -138,6 +144,7 @@ export interface OrderFull {
   patient: PatientDetail;
   items: OrderItemDto[];
   samples: SampleDto[];
+  events: OrderEvent[];
   hasResult: boolean;
   resultFileName?: string | null;
   progress: ProgressDto;
@@ -160,8 +167,8 @@ export const updateOrder = (token: string | undefined, id: string, body: UpdateO
 export const searchPatients = (token: string | undefined, q: string) =>
   api<PatientSearch[]>(token, `/api/patients/search?q=${encodeURIComponent(q)}`);
 
-export const setOrderStage = (token: string | undefined, id: string, stage: string) =>
-  api<OrderDto>(token, `/api/orders/${id}/stage`, { method: "POST", body: JSON.stringify({ stage }) });
+export const setOrderStage = (token: string | undefined, id: string, stage: string, by?: string) =>
+  api<OrderDto>(token, `/api/orders/${id}/stage`, { method: "POST", body: JSON.stringify({ stage, by }) });
 
 export const setSampleQuality = (token: string | undefined, sampleId: string, quality: string) =>
   api<OrderDto>(token, `/api/orders/samples/${sampleId}/quality`, { method: "POST", body: JSON.stringify({ quality }) });
@@ -196,6 +203,22 @@ export async function uploadResult(token: string | undefined, id: string, file: 
     throw new ApiError(res.status, msg);
   }
   return res.json();
+}
+
+/** Lấy file kết quả (đính kèm token) dạng blob URL để XEM inline. Nhớ revoke khi đóng. */
+export async function fetchResultBlob(
+  token: string | undefined, id: string,
+): Promise<{ url: string; type: string; name: string }> {
+  const res = await fetch(`${API_BASE}/api/orders/${id}/result`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, `Không xem được kết quả (${res.status})`);
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") ?? "";
+  const m = /filename\*?=(?:UTF-8'')?"?([^;"]+)"?/i.exec(cd);
+  const name = m ? decodeURIComponent(m[1]) : "ketqua";
+  const type = blob.type || res.headers.get("Content-Type") || "";
+  return { url: URL.createObjectURL(blob), type, name };
 }
 
 /** Tải file kết quả về máy (đính kèm token, kích hoạt download). */

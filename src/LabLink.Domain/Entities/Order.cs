@@ -50,6 +50,7 @@ public class Order
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Sample> Samples { get; set; } = new List<Sample>();
+    public ICollection<OrderEvent> Events { get; set; } = new List<OrderEvent>();
 
     public TestResult? Result { get; set; }
 }

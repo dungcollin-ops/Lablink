@@ -18,7 +18,7 @@ public interface IOrderService
     Task<OrderResult> UpdateAsync(Guid id, Guid userId, bool seeAll, UpdateOrderRequest req, CancellationToken ct = default);
 
     /// <summary>Lab cập nhật trạng thái phiếu (tiến trình mẫu).</summary>
-    Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, CancellationToken ct = default);
+    Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, string? by = null, CancellationToken ct = default);
 
     /// <summary>Lab đánh giá chất lượng 1 mẫu (Pass/Fail).</summary>
     Task<OrderResult> SetSampleQualityAsync(Guid sampleId, string quality, Guid actorId, CancellationToken ct = default);

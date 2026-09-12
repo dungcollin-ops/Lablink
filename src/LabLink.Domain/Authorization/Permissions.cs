@@ -11,10 +11,13 @@ public static class Permissions
     public const string DealApprove = "deal.approve";
     public const string OrderCreate = "order.create";
     public const string OrderRead = "order.read";
-    public const string SampleCollect = "sample.collect";
+    public const string SampleCollect = "sample.collect";   // B2 · Lấy mẫu
     public const string SampleSend = "sample.send";
-    public const string SampleReceive = "sample.receive";
+    public const string SampleGather = "sample.gather";     // B3 · Gom mẫu
+    public const string SampleReceive = "sample.receive";   // B4 · Nhận mẫu
     public const string SampleQc = "sample.qc";
+    public const string HardcopyDeliver = "hardcopy.deliver";   // B6 · Giao bản cứng
+    public const string HardcopyReceive = "hardcopy.receive";   // B7 · Nhận bản cứng
     public const string SidPrint = "sid.print";
     public const string ResultRead = "result.read";
     public const string ResultUpload = "result.upload";
@@ -29,7 +32,8 @@ public static class Permissions
         CatalogRead, CatalogPriceEdit,
         DealCreate, DealRead, DealApprove,
         OrderCreate, OrderRead,
-        SampleCollect, SampleSend, SampleReceive, SampleQc,
+        SampleCollect, SampleSend, SampleGather, SampleReceive, SampleQc,
+        HardcopyDeliver, HardcopyReceive,
         SidPrint,
         ResultRead, ResultUpload, ResultVerify,
         UserManage, RoleManage, AuditRead, ReportRead,
@@ -48,8 +52,16 @@ public static class DefaultRoles
             Permissions.CatalogRead,
             Permissions.DealCreate, Permissions.DealRead,
             Permissions.OrderCreate, Permissions.OrderRead,
-            Permissions.SampleSend,
+            Permissions.SampleCollect,      // B2 · BS tự lấy mẫu (PK ít người)
+            Permissions.HardcopyReceive,    // B7 · nhận bản cứng
             Permissions.SidPrint, Permissions.ResultRead,
+        }),
+        new("nurse", "Điều dưỡng", new[]
+        {
+            Permissions.OrderRead, Permissions.ResultRead,
+            Permissions.SampleCollect,      // B2 · điều dưỡng lấy mẫu thay BS
+            Permissions.HardcopyReceive,
+            Permissions.SidPrint,
         }),
         new("retail", "Khách lẻ", new[]
         {
@@ -60,7 +72,9 @@ public static class DefaultRoles
         {
             Permissions.CatalogRead, Permissions.CatalogPriceEdit,
             Permissions.DealRead, Permissions.DealApprove,
-            Permissions.OrderRead, Permissions.SampleCollect, Permissions.SampleReceive, Permissions.SampleQc,
+            Permissions.OrderRead,
+            Permissions.SampleCollect, Permissions.SampleGather, Permissions.SampleReceive, Permissions.SampleQc,
+            Permissions.HardcopyDeliver,
             Permissions.SidPrint, Permissions.ResultRead, Permissions.ResultUpload, Permissions.ResultVerify,
         }),
         new("admin", "Quản trị hệ thống", Permissions.All),

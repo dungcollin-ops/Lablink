@@ -16,6 +16,7 @@ import {
 import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
 import SidPrint from "../components/SidPrint";
+import { PERM_FOR_STAGE } from "../workflow";
 import a from "./admin.module.css";
 import t from "./Track.module.css";
 
@@ -23,27 +24,30 @@ const vnd = new Intl.NumberFormat("vi-VN");
 
 const STAGES = [
   { key: "Ordered", label: "Chờ lấy mẫu" },
-  { key: "Collected", label: "Đã soạn mẫu" },
-  { key: "Sent", label: "Đã gửi" },
-  { key: "Received", label: "Đã nhận" },
-  { key: "Running", label: "Đang chạy" },
+  { key: "Collected", label: "Đã lấy mẫu" },
+  { key: "Gathered", label: "Đã gom mẫu" },
+  { key: "Received", label: "Đã nhận mẫu" },
   { key: "Resulted", label: "Có kết quả" },
+  { key: "HardCopySent", label: "Đã giao bản cứng" },
+  { key: "HardCopyReceived", label: "Đã nhận bản cứng" },
 ];
 const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
 const STAGE_CLS: Record<string, string> = {
-  Ordered: t.stageOrdered, Collected: t.stageCollected, Sent: t.stageSent,
-  Received: t.stageReceived, Running: t.stageRunning, Resulted: t.stageResulted,
+  Ordered: t.stageOrdered, Collected: t.stageCollected, Gathered: t.stageSent,
+  Received: t.stageReceived, Resulted: t.stageResulted,
+  HardCopySent: t.stageRunning, HardCopyReceived: t.stageResulted,
 };
 const QC_LABEL: Record<string, string> = { Unset: "Chưa đánh giá", Pass: "Đạt", Fail: "Không đạt" };
 const STAGE_ORDER = STAGES.map((s) => s.key);
 
-// PXN chỉ được chuyển tới bước bàn giao trở đi — không kéo lùi về phần luồng của bên chỉ định.
-// Trả về bước kế hợp lệ, hoặc null nếu không có bước nào PXN được bấm ở trạng thái hiện tại.
-function pxnNextStage(source: string, current: string): string | null {
-  if (current === "Sent") return "Received";                              // bác sĩ đã gửi → PXN nhận
-  if (current === "Collected" && source === "Retail") return "Received";  // khách lẻ đã lấy mẫu → PXN nhận
-  if (current === "Received") return "Running";                           // đã nhận → đang chạy
-  return null; // Ordered / Collected(bác sĩ): dùng nút riêng · Running → Resulted: tự động khi upload KQ
+// Luồng 7 bước đi tuyến tính: chỉ cho tiến đúng bước kế tiếp, không lùi.
+// "Có kết quả" chỉ đạt được khi upload file → không cho bấm chip tới đó.
+function pxnNextStage(current: string): string | null {
+  const i = STAGE_ORDER.indexOf(current);
+  if (i < 0 || i >= STAGE_ORDER.length - 1) return null;
+  const next = STAGE_ORDER[i + 1];
+  if (next === "Resulted") return null; // Received → Resulted: chỉ qua tải kết quả lên
+  return next;
 }
 
 export default function LabOrders({ session }: { session: Session }) {
@@ -171,11 +175,12 @@ export default function LabOrders({ session }: { session: Session }) {
                   <div className={t.blockTitle}>Tiến trình mẫu</div>
                   <div className={t.chips} style={{ marginBottom: 14 }}>
                     {(() => {
-                      const next = pxnNextStage(detail.source, detail.stage);
+                      const next = pxnNextStage(detail.stage);
+                      const canNext = next != null && (session.permissions as string[]).includes(PERM_FOR_STAGE[next] ?? "");
                       const curIdx = STAGE_ORDER.indexOf(detail.stage);
                       return STAGES.map((sg) => {
                         const isCurrent = detail.stage === sg.key;
-                        const isNext = sg.key === next;
+                        const isNext = sg.key === next && canNext;
                         const passed = STAGE_ORDER.indexOf(sg.key) < curIdx;
                         return (
                           <button
@@ -183,9 +188,10 @@ export default function LabOrders({ session }: { session: Session }) {
                             disabled={busy || !isNext}
                             title={
                               isNext ? "Bấm để chuyển sang bước này"
-                                : isCurrent ? "Trạng thái hiện tại"
-                                  : passed ? "Bước bên chỉ định đã đi qua — không quay lại"
-                                    : "Chưa tới bước này"
+                                : (sg.key === next && !canNext) ? "Bạn không có quyền cho bước này"
+                                  : isCurrent ? "Trạng thái hiện tại"
+                                    : passed ? "Bước đã đi qua — không quay lại"
+                                      : "Chưa tới bước này"
                             }
                             className={`${t.chip} ${isCurrent ? t.chipActive : ""} ${isNext ? t.chipNext : ""}`}
                             onClick={() => isNext && changeStage(o.id, sg.key)}

@@ -50,6 +50,9 @@ public record PatientDetailDto(
     string? Gender, string? Phone, string? Email, string? NationalId,
     string? Bhyt, string? Address, string? Note);
 
+/// <summary>Một mốc trong timeline phiếu (ai xác nhận bước nào, lúc nào).</summary>
+public record OrderEventDto(string Step, string ActorName, DateTimeOffset At, string? Note);
+
 /// <summary>Phiếu đầy đủ (xem/sửa): kèm chi tiết bệnh nhân + phòng khám/bác sĩ + cờ Editable.</summary>
 public record OrderFullDto(
     Guid Id, string OrderNo, string Source, string Stage, bool Editable,
@@ -58,6 +61,7 @@ public record OrderFullDto(
     PatientDetailDto Patient,
     IReadOnlyList<OrderItemDto> Items,
     IReadOnlyList<SampleDto> Samples,
+    IReadOnlyList<OrderEventDto> Events,
     bool HasResult, string? ResultFileName, ProgressDto Progress);
 
 public record UpdateOrderRequest(
@@ -95,7 +99,7 @@ public record PatientSearchDto(
     Guid Id, string MaBN, string FullName, DateOnly? Dob,
     string? Gender, string? Phone, string? Address);
 
-public record SetStageRequest(string Stage);
+public record SetStageRequest(string Stage, string? By = null);
 public record SetQualityRequest(string Quality);
 public record AssignCollectRequest(string Collector, DateTimeOffset? AppointmentAt, string? Place);
 public record SendSampleRequest(string SendVia, string? TrackingNo, string? Shipper, DateTimeOffset? SendAt);

@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Sample> Samples => Set<Sample>();
     public DbSet<TestResult> TestResults => Set<TestResult>();
+    public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<SequenceCounter> Sequences => Set<SequenceCounter>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -200,6 +201,18 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.Order).WithOne(o => o.Result).HasForeignKey<TestResult>(x => x.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.OrderId).IsUnique();
+        });
+
+        b.Entity<OrderEvent>(e =>
+        {
+            e.ToTable("order_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Step).HasConversion<int>();
+            e.Property(x => x.ActorName).HasMaxLength(200);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.HasOne(x => x.Order).WithMany(o => o.Events).HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.OrderId, x.At });
         });
 
         b.Entity<SequenceCounter>(e =>

@@ -1,19 +1,17 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import type { Session } from "../auth/session";
-import {
-  listOrders, getOrderFull, updateOrder, downloadResult,
-  type OrderListItem, type OrderFull,
-} from "../api/orders";
+import { getOrderFull, updateOrder, setOrderStage, type OrderFull } from "../api/orders";
 import { fetchCatalog, type CatalogItem } from "../api/catalog";
 import { ApiError } from "../api/http";
+import { allowedNext, STAGE_ACTION } from "../workflow";
 import Modal from "./Modal";
+import ResultViewer from "./ResultViewer";
 import a from "../pages/admin.module.css";
-import t from "../pages/Track.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 const STAGE_LABEL: Record<string, string> = {
-  Ordered: "Chờ lấy mẫu", Collected: "Đã soạn mẫu", Sent: "Đã gửi",
-  Received: "Đã nhận", Running: "Đang chạy", Resulted: "Có kết quả",
+  Ordered: "Chờ lấy mẫu", Collected: "Đã lấy mẫu", Gathered: "Đã gom mẫu",
+  Received: "Đã nhận mẫu", Resulted: "Có kết quả",
+  HardCopySent: "Đã giao bản cứng", HardCopyReceived: "Đã nhận bản cứng",
 };
 
 interface EditItem {
@@ -37,72 +35,43 @@ const toEditItems = (o: OrderFull): EditItem[] => o.items.map((i) => ({
   samples: [i.sampleType], sampleType: i.sampleType, qty: i.qty, unitPrice: i.unitPrice,
 }));
 
-export default function OrderLookup({ session }: { session: Session }) {
-  const token = session.token;
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<OrderListItem[]>([]);
-  const [detail, setDetail] = useState<OrderFull | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+/** Modal xem đầy đủ + sửa 1 phiếu (tự tải theo orderId). onSaved() báo caller làm mới danh sách. */
+export default function OrderDetailModal({ token, orderId, perms, onClose, onSaved }: {
+  token?: string; orderId: string; perms: string[]; onClose: () => void; onSaved?: () => void;
+}) {
+  const [order, setOrder] = useState<OrderFull | null>(null);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (query.trim().length < 2) { setResults([]); return; }
-    const h = setTimeout(() => {
-      listOrders(token, query.trim()).then(setResults).catch(() => setResults([]));
-    }, 250);
-    return () => clearTimeout(h);
-  }, [token, query]);
+    let alive = true;
+    getOrderFull(token, orderId)
+      .then((o) => { if (alive) setOrder(o); })
+      .catch((e) => setErr(e instanceof ApiError ? e.message : "Không tải được phiếu"));
+    return () => { alive = false; };
+  }, [token, orderId]);
 
-  async function openOrder(id: string) {
-    setLoadingId(id);
-    try {
-      setDetail(await getOrderFull(token, id));
-    } catch { /* ignore */ } finally { setLoadingId(null); }
+  if (err) {
+    return (
+      <Modal title="Phiếu" onClose={onClose} footer={<button className={a.btn} onClick={onClose}>Đóng</button>}>
+        <div className={a.error}>{err}</div>
+      </Modal>
+    );
   }
-
+  if (!order) {
+    return (
+      <Modal title="Phiếu" onClose={onClose}>
+        <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>Đang tải…</div>
+      </Modal>
+    );
+  }
   return (
-    <div className={t.card} style={{ padding: 16, marginBottom: 16 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Tìm phiếu chỉ định đã tạo</div>
-      <input
-        className={a.input}
-        style={{ maxWidth: 480 }}
-        placeholder="Mã phiếu / tên BN / mã BN / SID / xét nghiệm…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      {results.length > 0 && (
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-          {results.map((o) => (
-            <button
-              key={o.id}
-              onClick={() => openOrder(o.id)}
-              disabled={loadingId === o.id}
-              style={{
-                display: "flex", alignItems: "center", gap: 10, textAlign: "left",
-                background: "var(--surface-2)", border: "1px solid var(--border)",
-                borderRadius: 8, padding: "8px 12px", cursor: "pointer", font: "inherit",
-              }}
-            >
-              <b style={{ color: "var(--action-hover)" }}>{o.orderNo}</b>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{STAGE_LABEL[o.stage] ?? o.stage}</span>
-              <span>{o.patientName} <span style={{ color: "var(--text-faint)", fontSize: 12 }}>{o.patientMaBN}</span></span>
-              <span style={{ marginLeft: "auto", fontWeight: 600 }}>{vnd.format(o.total)} ₫</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {query.trim().length >= 2 && results.length === 0 && (
-        <div style={{ marginTop: 8, fontSize: 13, color: "var(--text-faint)" }}>Không tìm thấy phiếu.</div>
-      )}
-
-      {detail && (
-        <OrderModal
-          token={token}
-          order={detail}
-          onClose={() => setDetail(null)}
-          onSaved={(o) => setDetail(o)}
-        />
-      )}
-    </div>
+    <OrderModal
+      token={token}
+      order={order}
+      perms={perms}
+      onClose={onClose}
+      onSaved={(o) => { setOrder(o); onSaved?.(); }}
+    />
   );
 }
 
@@ -115,17 +84,20 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function OrderModal({ token, order, onClose, onSaved }: {
-  token?: string; order: OrderFull; onClose: () => void; onSaved: (o: OrderFull) => void;
+function OrderModal({ token, order, perms, onClose, onSaved }: {
+  token?: string; order: OrderFull; perms: string[]; onClose: () => void; onSaved: (o: OrderFull) => void;
 }) {
   const [o, setO] = useState<OrderFull>(order);
   const [editing, setEditing] = useState(false);
+  const [by, setBy] = useState("");
+  const [advancing, setAdvancing] = useState(false);
   const [pf, setPf] = useState<PForm>(() => toPForm(order));
   const [items, setItems] = useState<EditItem[]>(() => toEditItems(order));
   const [tQuery, setTQuery] = useState("");
   const [tResults, setTResults] = useState<CatalogItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [viewing, setViewing] = useState(false);
 
   useEffect(() => { setO(order); }, [order]);
   useEffect(() => {
@@ -178,10 +150,24 @@ function OrderModal({ token, order, onClose, onSaved }: {
     } finally { setBusy(false); }
   }
 
+  const nx = !editing ? allowedNext(o.stage, perms) : null;
+  async function advance() {
+    if (!nx) return;
+    setAdvancing(true);
+    try {
+      await setOrderStage(token, o.id, nx.stage, nx.stage === "Collected" ? (by.trim() || undefined) : undefined);
+      const full = await getOrderFull(token, o.id);
+      setO(full); onSaved(full); setBy("");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Lỗi chuyển bước");
+    } finally { setAdvancing(false); }
+  }
+
   const grid3: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 };
   const blkTitle: CSSProperties = { fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--text-faint)", margin: "16px 0 8px" };
 
   return (
+    <>
     <Modal
       title={`Phiếu ${o.orderNo}`}
       onClose={onClose}
@@ -199,7 +185,6 @@ function OrderModal({ token, order, onClose, onSaved }: {
         </>
       )}
     >
-      {/* Header trạng thái */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
         <span style={{ padding: "2px 9px", borderRadius: 999, background: "var(--action-soft)", color: "var(--action-hover)", fontWeight: 600, fontSize: 12 }}>
           {STAGE_LABEL[o.stage] ?? o.stage}
@@ -210,13 +195,24 @@ function OrderModal({ token, order, onClose, onSaved }: {
       </div>
       {!o.editable && !editing && (
         <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--warning-text)" }}>
-          Phiếu đã gửi phòng xét nghiệm — chỉ xem, không sửa được.
+          Phiếu đã chuyển cho phòng xét nghiệm — chỉ xem, không sửa được.
+        </div>
+      )}
+
+      {nx && (
+        <div style={{ marginTop: 12, padding: "10px 12px", background: "var(--action-soft)", borderRadius: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: "var(--action-hover)", fontWeight: 600 }}>Bước kế của bạn:</span>
+          {nx.stage === "Collected" && (
+            <input className={a.input} style={{ maxWidth: 200 }} placeholder="Người lấy mẫu (tuỳ chọn)" value={by} onChange={(e) => setBy(e.target.value)} />
+          )}
+          <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginLeft: "auto" }} disabled={advancing} onClick={advance}>
+            {advancing ? "Đang lưu…" : `✓ ${STAGE_ACTION[nx.stage] ?? nx.stage}`}
+          </button>
         </div>
       )}
 
       {!editing ? (
         <>
-          {/* ---- XEM ---- */}
           <div style={blkTitle}>Bệnh nhân</div>
           <div style={grid3}>
             <Row label="Mã BN" value={o.patient.maBN} />
@@ -262,15 +258,29 @@ function OrderModal({ token, order, onClose, onSaved }: {
           {o.hasResult && (
             <>
               <div style={blkTitle}>Kết quả</div>
-              <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => downloadResult(token, o.id, o.resultFileName ?? undefined)}>
-                ⭳ {o.resultFileName}
+              <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setViewing(true)}>
+                👁 Xem kết quả ({o.resultFileName})
               </button>
+            </>
+          )}
+
+          {o.events && o.events.length > 0 && (
+            <>
+              <div style={blkTitle}>Lịch sử xử lý (ai làm gì lúc nào)</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {o.events.map((ev, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "baseline", fontSize: 13, borderBottom: "1px dashed var(--divider)", paddingBottom: 6 }}>
+                    <span style={{ minWidth: 128, fontWeight: 600, color: "var(--action-hover)" }}>{STAGE_LABEL[ev.step] ?? ev.step}</span>
+                    <span style={{ flex: 1 }}>{ev.actorName || "—"}{ev.note ? ` · ${ev.note}` : ""}</span>
+                    <span style={{ color: "var(--text-faint)", fontSize: 12, whiteSpace: "nowrap" }}>{new Date(ev.at).toLocaleString("vi-VN")}</span>
+                  </div>
+                ))}
+              </div>
             </>
           )}
         </>
       ) : (
         <>
-          {/* ---- SỬA ---- */}
           {error && <div className={a.error} style={{ marginTop: 12 }}>{error}</div>}
           <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "12px 0 0" }}>
             Sửa thông tin bệnh nhân sẽ <b>cập nhật vào hồ sơ (danh mục BN)</b>. Bác sĩ / phòng khám / chẩn đoán / xét nghiệm chỉ áp cho phiếu này.
@@ -334,6 +344,10 @@ function OrderModal({ token, order, onClose, onSaved }: {
         </>
       )}
     </Modal>
+    {viewing && (
+      <ResultViewer token={token} orderId={o.id} orderNo={o.orderNo} onClose={() => setViewing(false)} />
+    )}
+    </>
   );
 }
 

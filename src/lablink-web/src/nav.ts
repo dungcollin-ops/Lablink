@@ -13,9 +13,12 @@ export interface NavItem {
  * Nhóm quyết định workspace; từng mục vẫn gắn permission để lọc/ẩn-hiện. */
 export const NAV: Record<Role, NavItem[]> = {
   doctor: [
-    { view: "deal", label: "Chốt giá xét nghiệm", perm: "deal.create" },
-    { view: "order", label: "Chỉ định cho bệnh nhân", perm: "order.create" },
-    { view: "track", label: "Theo dõi & kết quả", perm: "result.read" },
+    { view: "track", label: "Xem kết quả", perm: "result.read" },
+    { view: "order", label: "Chỉ định xét nghiệm", perm: "order.create" },
+    { view: "deal", label: "Quản lý danh mục xét nghiệm", perm: "deal.create" },
+  ],
+  nurse: [
+    { view: "track", label: "Lấy mẫu & kết quả", perm: "result.read" },
   ],
   retail: [
     { view: "book", label: "Đặt xét nghiệm", perm: "order.create" },
