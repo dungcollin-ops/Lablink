@@ -29,6 +29,7 @@ public class DealService : IDealService
         var batch = new PriceDealBatch
         {
             ProposedById = doctorId,
+            DepartmentId = await UserDeptAsync(doctorId, ct), // deal chốt dùng chung trong phòng khám
             Note = string.IsNullOrWhiteSpace(req.Note) ? null : req.Note.Trim(),
         };
         foreach (var i in req.Items)
@@ -49,12 +50,18 @@ public class DealService : IDealService
 
     public async Task<IReadOnlyList<DealBatchDto>> GetMineAsync(Guid doctorId, CancellationToken ct = default)
     {
-        var batches = await Query()
-            .Where(b => b.ProposedById == doctorId)
-            .OrderByDescending(b => b.CreatedAt)
-            .ToListAsync(ct);
-        return batches.Select(Map).ToList();
+        // Theo phòng khám: thấy đề nghị của cả phòng; không có phòng thì chỉ của mình.
+        var deptId = await UserDeptAsync(doctorId, ct);
+        var q = Query();
+        q = deptId != null ? q.Where(b => b.DepartmentId == deptId) : q.Where(b => b.ProposedById == doctorId);
+        var batches = await q.OrderByDescending(b => b.CreatedAt).ToListAsync(ct);
+        return batches.Select(b => Map(b)).ToList();
     }
+
+    private Task<Guid?> UserDeptAsync(Guid userId, CancellationToken ct) =>
+        _db.Users.Where(u => u.Id == userId)
+            .Select(u => u.Employee != null ? (Guid?)u.Employee.DepartmentId : null)
+            .FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<DealBatchDto>> GetPendingAsync(CancellationToken ct = default)
     {
@@ -62,7 +69,28 @@ public class DealService : IDealService
             .Where(b => b.Items.Any(i => i.Status == DealStatus.Pending))
             .OrderBy(b => b.CreatedAt)
             .ToListAsync(ct);
-        return batches.Select(Map).ToList();
+        return batches.Select(b => Map(b)).ToList();
+    }
+
+    public async Task<IReadOnlyList<DealBatchDto>> GetHistoryAsync(CancellationToken ct = default)
+    {
+        // Gói đã xử lý xong: có dòng và KHÔNG còn dòng nào chờ duyệt.
+        var batches = await Query()
+            .Where(b => b.Items.Any() && b.Items.All(i => i.Status != DealStatus.Pending))
+            .ToListAsync(ct);
+        batches = batches
+            .OrderByDescending(b => b.Items.Max(i => i.DecidedAt ?? b.CreatedAt))
+            .ToList();
+
+        // Tra tên người duyệt (PriceDeal chỉ lưu DecidedById, không có nav).
+        var deciderIds = batches.SelectMany(b => b.Items)
+            .Where(i => i.DecidedById != null).Select(i => i.DecidedById!.Value).Distinct().ToList();
+        var names = deciderIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _db.Users.Where(u => deciderIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
+
+        return batches.Select(b => Map(b, names)).ToList();
     }
 
     public async Task<DealResult> DecideItemAsync(Guid itemId, bool approve, Guid actorId, CancellationToken ct = default)
@@ -93,6 +121,64 @@ public class DealService : IDealService
     public Task<int> PendingCountAsync(CancellationToken ct = default) =>
         _db.PriceDeals.CountAsync(x => x.Status == DealStatus.Pending, ct);
 
+    public async Task<IReadOnlyDictionary<Guid, long>> GetEffectivePricesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var deptId = await UserDeptAsync(userId, ct);
+        return await EffectivePricesAsync(_db, deptId, userId, null, ct);
+    }
+
+    public async Task<DealResult> CancelItemAsync(Guid itemId, Guid actorId, CancellationToken ct = default)
+    {
+        var item = await _db.PriceDeals.FirstOrDefaultAsync(x => x.Id == itemId, ct);
+        if (item is null) return DealResult.Fail("Không tìm thấy dòng deal.");
+        if (item.Status != DealStatus.Approved) return DealResult.Fail("Chỉ huỷ được dòng đã chốt.");
+
+        Cancel(item, actorId);
+        _db.AuditLogs.Add(new AuditLog { UserId = actorId, Action = "deal.cancel", ObjectType = "PriceDeal", ObjectId = item.Id.ToString() });
+        await _db.SaveChangesAsync(ct);
+        return DealResult.Success;
+    }
+
+    public async Task<DealResult> CancelBatchAsync(Guid batchId, Guid actorId, CancellationToken ct = default)
+    {
+        var items = await _db.PriceDeals
+            .Where(x => x.BatchId == batchId && x.Status == DealStatus.Approved)
+            .ToListAsync(ct);
+        if (items.Count == 0) return DealResult.Fail("Gói không có dòng đã chốt để huỷ.");
+
+        foreach (var item in items) Cancel(item, actorId);
+        _db.AuditLogs.Add(new AuditLog { UserId = actorId, Action = "deal.cancel", ObjectType = "PriceDealBatch", ObjectId = batchId.ToString(), Detail = $"{items.Count} dòng" });
+        await _db.SaveChangesAsync(ct);
+        return DealResult.Success;
+    }
+
+    private static void Cancel(PriceDeal item, Guid actorId)
+    {
+        item.Status = DealStatus.Cancelled;
+        item.DecidedById = actorId;
+        item.DecidedAt = DateTimeOffset.UtcNow; // re-stamp: quyết định mới nhất = huỷ
+    }
+
+    /// <summary>Giá deal hiệu lực = quyết định MỚI NHẤT cho mỗi (phòng, dịch vụ); chỉ dùng khi quyết định đó là Approved.
+    /// Cancelled/Rejected mới nhất → không có deal (về giá niêm yết). Tính trong bộ nhớ để tránh giới hạn GroupBy của EF.</summary>
+    public static async Task<Dictionary<Guid, long>> EffectivePricesAsync(
+        AppDbContext db, Guid? deptId, Guid userId, IReadOnlyCollection<Guid>? labTestIds, CancellationToken ct)
+    {
+        var q = db.PriceDeals.AsNoTracking().Where(d => d.Status != DealStatus.Pending && d.DecidedAt != null);
+        q = deptId != null ? q.Where(d => d.Batch.DepartmentId == deptId) : q.Where(d => d.Batch.ProposedById == userId);
+        if (labTestIds != null) q = q.Where(d => labTestIds.Contains(d.LabTestId));
+
+        var decided = await q
+            .Select(d => new { d.LabTestId, d.Status, d.ProposedPrice, d.DecidedAt })
+            .ToListAsync(ct);
+
+        return decided
+            .GroupBy(d => d.LabTestId)
+            .Select(g => g.OrderByDescending(x => x.DecidedAt).First())
+            .Where(x => x.Status == DealStatus.Approved)
+            .ToDictionary(x => x.LabTestId, x => x.ProposedPrice);
+    }
+
     // ---- helpers ----
     private IQueryable<PriceDealBatch> Query() =>
         _db.PriceDealBatches.AsNoTracking()
@@ -116,12 +202,15 @@ public class DealService : IDealService
             Detail = count is null ? null : $"{count} dòng",
         };
 
-    private static DealBatchDto Map(PriceDealBatch b) => new(
+    private static DealBatchDto Map(PriceDealBatch b, IReadOnlyDictionary<Guid, string>? deciders = null) => new(
         b.Id, b.ProposedById, b.ProposedBy?.FullName ?? "—", b.Note, b.CreatedAt,
         b.Items.OrderBy(i => i.LabTest.Name).Select(i => new DealItemDto(
             i.Id, i.LabTestId, i.LabTest.Code, i.LabTest.Name, i.LabTest.Group,
             i.LabTest.ListPrice, i.ProposedPrice, i.Status.ToString(),
             i.LabTest.ListPrice > 0
                 ? Math.Round((i.ProposedPrice - i.LabTest.ListPrice) * 100.0 / i.LabTest.ListPrice, 1)
-                : 0)).ToList());
+                : 0,
+            i.DecidedAt,
+            i.DecidedById != null && deciders != null && deciders.TryGetValue(i.DecidedById.Value, out var n) ? n : null
+            )).ToList());
 }

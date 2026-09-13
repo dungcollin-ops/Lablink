@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using LabLink.Application.Orders;
 using LabLink.Domain.Entities;
+using LabLink.Infrastructure.Deals;
 using LabLink.Domain.Enums;
 using LabLink.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -44,19 +45,27 @@ public partial class OrderService : IOrderService
         if (ids.Any(id => !tests.ContainsKey(id)))
             return OrderResult.Fail("Có xét nghiệm không tồn tại.");
 
-        // ---- Giá chốt (deal) cho bác sĩ ----
-        var dealPrices = new Dictionary<Guid, long>();
-        if (source == OrderSource.Doctor)
+        // ---- Phòng ban đặt phiếu (lấy từ NV của người tạo) + bác sĩ chỉ định ----
+        var creator = await _db.Users.Where(u => u.Id == userId)
+            .Select(u => new { u.EmployeeId, DeptId = u.Employee != null ? (Guid?)u.Employee.DepartmentId : null })
+            .FirstOrDefaultAsync(ct);
+        var departmentId = creator?.DeptId;
+        Guid? doctorId = req.DoctorId;
+        if (doctorId is Guid did)
         {
-            dealPrices = await _db.PriceDeals.AsNoTracking()
-                .Where(d => d.Status == DealStatus.Approved
-                         && d.Batch.ProposedById == userId
-                         && ids.Contains(d.LabTestId))
-                .OrderByDescending(d => d.DecidedAt)
-                .GroupBy(d => d.LabTestId)
-                .Select(g => new { g.Key, Price = g.First().ProposedPrice })
-                .ToDictionaryAsync(x => x.Key, x => x.Price, ct);
+            var emp = await _db.Employees.FirstOrDefaultAsync(e => e.Id == did, ct);
+            if (emp is null) return OrderResult.Fail("Bác sĩ chỉ định không hợp lệ.");
+            departmentId ??= emp.DepartmentId; // người tạo chưa gắn phòng → theo phòng của bác sĩ
         }
+        else if (source == OrderSource.Doctor && creator?.EmployeeId is Guid ceid)
+        {
+            doctorId = ceid; // bác sĩ tự chỉ định
+        }
+
+        // ---- Giá chốt (deal) — theo PHÒNG KHÁM của phiếu; "quyết định mới nhất thắng" (huỷ → về niêm yết) ----
+        var dealPrices = source == OrderSource.Doctor
+            ? await DealService.EffectivePricesAsync(_db, departmentId, userId, ids, ct)
+            : new Dictionary<Guid, long>();
 
         // ---- Bệnh nhân ----
         var patient = await ResolvePatientAsync(req.Patient, email, ct);
@@ -86,23 +95,6 @@ public partial class OrderService : IOrderService
 
         // ---- Gom mẫu + sinh SID atomic (1 loại mẫu = 1 SID). Sinh ngay khi tạo phiếu. ----
         var samples = await BuildSamplesWithSidAsync(items.Select(x => x.SampleType), ct);
-
-        // ---- Phòng ban đặt phiếu (lấy từ NV của người tạo) + bác sĩ chỉ định ----
-        var creator = await _db.Users.Where(u => u.Id == userId)
-            .Select(u => new { u.EmployeeId, DeptId = u.Employee != null ? (Guid?)u.Employee.DepartmentId : null })
-            .FirstOrDefaultAsync(ct);
-        var departmentId = creator?.DeptId;
-        Guid? doctorId = req.DoctorId;
-        if (doctorId is Guid did)
-        {
-            var emp = await _db.Employees.FirstOrDefaultAsync(e => e.Id == did, ct);
-            if (emp is null) return OrderResult.Fail("Bác sĩ chỉ định không hợp lệ.");
-            departmentId ??= emp.DepartmentId; // người tạo chưa gắn phòng → theo phòng của bác sĩ
-        }
-        else if (source == OrderSource.Doctor && creator?.EmployeeId is Guid ceid)
-        {
-            doctorId = ceid; // bác sĩ tự chỉ định
-        }
 
         // ---- Mã phiếu ----
         var orderSeq = await _seq.NextRangeAsync("ORDER", 1, ct);
@@ -256,18 +248,9 @@ public partial class OrderService : IOrderService
             return OrderResult.Fail("Có xét nghiệm không tồn tại.");
 
         // ---- Giá chốt (deal) cho bác sĩ ----
-        var dealPrices = new Dictionary<Guid, long>();
-        if (order.Source == OrderSource.Doctor)
-        {
-            dealPrices = await _db.PriceDeals.AsNoTracking()
-                .Where(d => d.Status == DealStatus.Approved
-                         && d.Batch.ProposedById == order.CreatedById
-                         && ids.Contains(d.LabTestId))
-                .OrderByDescending(d => d.DecidedAt)
-                .GroupBy(d => d.LabTestId)
-                .Select(g => new { g.Key, Price = g.First().ProposedPrice })
-                .ToDictionaryAsync(x => x.Key, x => x.Price, ct);
-        }
+        var dealPrices = order.Source == OrderSource.Doctor
+            ? await DealService.EffectivePricesAsync(_db, order.DepartmentId, order.CreatedById, ids, ct)
+            : new Dictionary<Guid, long>();
 
         // ---- Cập nhật hồ sơ bệnh nhân (DANH MỤC BN) + snapshot trên phiếu ----
         var p = order.Patient;

@@ -28,6 +28,12 @@ public class DealsController : AdminControllerBase
     public async Task<ActionResult<IReadOnlyList<DealBatchDto>>> Mine(CancellationToken ct)
         => Ok(await _svc.GetMineAsync(ActorId, ct));
 
+    /// <summary>Giá deal đã chốt theo phòng khám của user (labTestId → giá) — cho giỏ chỉ định.</summary>
+    [HttpGet("my-prices")]
+    [HasPermission(Permissions.DealCreate)]
+    public async Task<ActionResult<IReadOnlyDictionary<Guid, long>>> MyPrices(CancellationToken ct)
+        => Ok(await _svc.GetEffectivePricesAsync(ActorId, ct));
+
     /// <summary>Các gói còn dòng chờ duyệt (lab).</summary>
     [HttpGet("pending")]
     [HasPermission(Permissions.DealApprove)]
@@ -38,6 +44,12 @@ public class DealsController : AdminControllerBase
     [HasPermission(Permissions.DealApprove)]
     public async Task<ActionResult<int>> PendingCount(CancellationToken ct)
         => Ok(await _svc.PendingCountAsync(ct));
+
+    /// <summary>Lịch sử các gói đã duyệt/từ chối (lab).</summary>
+    [HttpGet("history")]
+    [HasPermission(Permissions.DealApprove)]
+    public async Task<ActionResult<IReadOnlyList<DealBatchDto>>> History(CancellationToken ct)
+        => Ok(await _svc.GetHistoryAsync(ct));
 
     [HttpPost("items/{id:guid}/approve")]
     [HasPermission(Permissions.DealApprove)]
@@ -58,6 +70,18 @@ public class DealsController : AdminControllerBase
     [HasPermission(Permissions.DealApprove)]
     public async Task<IActionResult> RejectBatch(Guid batchId, CancellationToken ct)
         => Result(await _svc.DecideBatchAsync(batchId, false, ActorId, ct));
+
+    /// <summary>Huỷ 1 dòng deal đã chốt.</summary>
+    [HttpPost("items/{id:guid}/cancel")]
+    [HasPermission(Permissions.DealApprove)]
+    public async Task<IActionResult> CancelItem(Guid id, CancellationToken ct)
+        => Result(await _svc.CancelItemAsync(id, ActorId, ct));
+
+    /// <summary>Huỷ tất cả dòng đã chốt trong 1 gói.</summary>
+    [HttpPost("{batchId:guid}/cancel-all")]
+    [HasPermission(Permissions.DealApprove)]
+    public async Task<IActionResult> CancelBatch(Guid batchId, CancellationToken ct)
+        => Result(await _svc.CancelBatchAsync(batchId, ActorId, ct));
 
     private IActionResult Result(DealResult r) =>
         r.Ok ? Ok(new { ok = true }) : BadRequest(new { message = r.Error });

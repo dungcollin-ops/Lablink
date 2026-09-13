@@ -110,7 +110,10 @@ public class AppDbContext : DbContext
             e.Property(x => x.Note).HasMaxLength(1000);
             e.HasOne(x => x.ProposedBy).WithMany().HasForeignKey(x => x.ProposedById)
                 .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Department).WithMany().HasForeignKey(x => x.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => x.ProposedById);
+            e.HasIndex(x => x.DepartmentId);
         });
 
         b.Entity<PriceDeal>(e =>

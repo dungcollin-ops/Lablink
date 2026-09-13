@@ -8,6 +8,7 @@ import {
   type PatientSearch,
 } from "../api/orders";
 import { listDoctorsForOrder, type Employee } from "../api/employees";
+import { myDealPrices } from "../api/deals";
 import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
@@ -81,6 +82,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [clinicName, setClinicName] = useState("");
   const [doctorId, setDoctorId] = useState("");
   const [doctors, setDoctors] = useState<Employee[]>([]);
+  const [dealPrices, setDealPrices] = useState<Record<string, number>>({});
 
   const [pQuery, setPQuery] = useState("");
   const [pResults, setPResults] = useState<PatientSearch[]>([]);
@@ -97,6 +99,16 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [comboBusy, setComboBusy] = useState("");
 
   const set = (k: keyof Patient, v: string) => setPatient((p) => ({ ...p, [k]: v }));
+
+  // Giá deal đã chốt của phòng (labTestId → giá) để giỏ hiển thị đúng giá hiệu lực.
+  useEffect(() => {
+    if (!isDoctor) return;
+    myDealPrices(token).then(setDealPrices).catch(() => setDealPrices({}));
+  }, [token, isDoctor]);
+
+  // Giá hiệu lực: có deal của phòng thì lấy giá deal, không thì giá niêm yết.
+  const effPrice = (labTestId: string, listPrice: number) =>
+    (isDoctor && dealPrices[labTestId] != null) ? dealPrices[labTestId] : listPrice;
 
   // Danh mục bác sĩ (theo phòng của người tạo) cho ô "Bác sĩ chỉ định".
   useEffect(() => {
@@ -191,7 +203,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
     }));
   }
 
-  const estTotal = cart.reduce((sum, x) => sum + x.listPrice * x.qty, 0);
+  const estTotal = cart.reduce((sum, x) => sum + effPrice(x.labTestId, x.listPrice) * x.qty, 0);
 
   async function submit() {
     setError("");
@@ -466,7 +478,16 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                   value={x.qty}
                   onChange={(e) => setCart((c) => c.map((y) => y.labTestId === x.labTestId ? { ...y, qty: Math.max(1, Number(e.target.value) || 1) } : y))}
                 />
-                <span className={s.linePrice}>{vnd.format(x.listPrice * x.qty)} ₫</span>
+                {effPrice(x.labTestId, x.listPrice) !== x.listPrice ? (
+                  <span className={s.linePrice} title="Giá đã chốt (deal) của phòng">
+                    <span style={{ textDecoration: "line-through", color: "var(--text-faint)", fontWeight: 400, marginRight: 4 }}>
+                      {vnd.format(x.listPrice * x.qty)}
+                    </span>
+                    <span style={{ color: "var(--success-text)" }}>{vnd.format(effPrice(x.labTestId, x.listPrice) * x.qty)} ₫</span>
+                  </span>
+                ) : (
+                  <span className={s.linePrice}>{vnd.format(x.listPrice * x.qty)} ₫</span>
+                )}
               </div>
             </div>
           ))}
@@ -482,7 +503,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
             {busy ? "Đang gửi…" : isDoctor ? "Gửi chỉ định" : "Đặt xét nghiệm"}
           </button>
           {isDoctor && <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8, textAlign: "center" }}>
-            Giá chốt (deal) áp dụng khi gửi; tạm tính hiển thị giá niêm yết.
+            Dịch vụ có giá chốt (deal) của phòng hiển thị giá deal; còn lại theo giá niêm yết.
           </div>}
         </div>
       </div>

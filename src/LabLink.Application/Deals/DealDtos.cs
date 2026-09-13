@@ -13,7 +13,9 @@ public record DealItemDto(
     long ListPrice,
     long ProposedPrice,
     string Status,
-    double DiffPercent);
+    double DiffPercent,
+    DateTimeOffset? DecidedAt = null,
+    string? DecidedByName = null);
 
 public record DealBatchDto(
     Guid Id,

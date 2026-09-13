@@ -221,3 +221,7 @@
   background: var(--danger-soft);
   color: var(--danger);
 }
+.cancelled {
+  background: var(--surface-1);
+  color: var(--text-muted);
+}

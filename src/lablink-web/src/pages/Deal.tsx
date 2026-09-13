@@ -12,6 +12,7 @@ const STATUS: Record<string, { cls: string; label: string }> = {
   Pending: { cls: d.pending, label: "Chờ duyệt" },
   Approved: { cls: d.approved, label: "Đã chốt" },
   Rejected: { cls: d.rejected, label: "Từ chối" },
+  Cancelled: { cls: d.cancelled, label: "Đã huỷ" },
 };
 
 interface CartLine {

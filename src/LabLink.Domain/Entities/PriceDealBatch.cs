@@ -11,6 +11,10 @@ public class PriceDealBatch
     public Guid ProposedById { get; set; }
     public User ProposedBy { get; set; } = null!;
 
+    /// <summary>Phòng khám của người gửi (lấy từ NV) — deal chốt dùng chung trong phòng.</summary>
+    public Guid? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+
     /// <summary>Ghi chú chung gửi kèm (dealNote).</summary>
     public string? Note { get; set; }
 
