@@ -11,4 +11,5 @@ public record MeDto(
     string FullName,
     string Email,
     IReadOnlyList<string> Roles,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    Guid? EmployeeId = null);

@@ -79,17 +79,26 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-faint);
-  padding: 11px 14px;
+  padding: 11px 10px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .table tbody td {
-  padding: 11px 14px;
+  padding: 11px 10px;
   border-bottom: 1px solid var(--border-2);
   color: var(--text-body);
   vertical-align: top;
+}
+
+/* Loại mẫu: cho xuống dòng để không chiếm bề ngang, nhường chỗ cho cột TG. */
+.sample {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  white-space: normal;
+  min-width: 90px;
+  max-width: 180px;
 }
 
 .table tbody tr:last-child td {

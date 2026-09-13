@@ -41,6 +41,8 @@ export interface OrderDto {
   note?: string | null;
   total: number;
   createdAt: string;
+  etaMinHours?: number | null;
+  etaMaxHours?: number | null;
   items: OrderItemDto[];
   samples: SampleDto[];
   hasResult: boolean;
@@ -58,6 +60,10 @@ export interface OrderListItem {
   total: number;
   createdAt: string;
   hasResult: boolean;
+  departmentName?: string | null;
+  expectedMinAt?: string | null;
+  expectedMaxAt?: string | null;
+  resultAt?: string | null;
 }
 export interface PatientSearch {
   id: string;
@@ -94,6 +100,7 @@ export interface CreateOrderRequest {
   diagnosis?: string;
   note?: string;
   items: OrderItemInput[];
+  doctorId?: string | null;
 }
 
 export const createOrder = (token: string | undefined, body: CreateOrderRequest) =>
@@ -141,6 +148,8 @@ export interface OrderFull {
   note?: string | null;
   total: number;
   createdAt: string;
+  etaMinHours?: number | null;
+  etaMaxHours?: number | null;
   patient: PatientDetail;
   items: OrderItemDto[];
   samples: SampleDto[];
@@ -148,6 +157,11 @@ export interface OrderFull {
   hasResult: boolean;
   resultFileName?: string | null;
   progress: ProgressDto;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  doctorId?: string | null;
+  doctorName?: string | null;
+  hardCopyRequired: boolean;
 }
 export interface UpdateOrderRequest {
   patient: PatientInput;
@@ -156,6 +170,7 @@ export interface UpdateOrderRequest {
   diagnosis?: string;
   note?: string;
   items: OrderItemInput[];
+  doctorId?: string | null;
 }
 
 export const getOrderFull = (token: string | undefined, id: string) =>

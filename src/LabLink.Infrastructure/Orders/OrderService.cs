@@ -87,6 +87,23 @@ public partial class OrderService : IOrderService
         // ---- Gom mẫu + sinh SID atomic (1 loại mẫu = 1 SID). Sinh ngay khi tạo phiếu. ----
         var samples = await BuildSamplesWithSidAsync(items.Select(x => x.SampleType), ct);
 
+        // ---- Phòng ban đặt phiếu (lấy từ NV của người tạo) + bác sĩ chỉ định ----
+        var creator = await _db.Users.Where(u => u.Id == userId)
+            .Select(u => new { u.EmployeeId, DeptId = u.Employee != null ? (Guid?)u.Employee.DepartmentId : null })
+            .FirstOrDefaultAsync(ct);
+        var departmentId = creator?.DeptId;
+        Guid? doctorId = req.DoctorId;
+        if (doctorId is Guid did)
+        {
+            var emp = await _db.Employees.FirstOrDefaultAsync(e => e.Id == did, ct);
+            if (emp is null) return OrderResult.Fail("Bác sĩ chỉ định không hợp lệ.");
+            departmentId ??= emp.DepartmentId; // người tạo chưa gắn phòng → theo phòng của bác sĩ
+        }
+        else if (source == OrderSource.Doctor && creator?.EmployeeId is Guid ceid)
+        {
+            doctorId = ceid; // bác sĩ tự chỉ định
+        }
+
         // ---- Mã phiếu ----
         var orderSeq = await _seq.NextRangeAsync("ORDER", 1, ct);
         var order = new Order
@@ -101,7 +118,11 @@ public partial class OrderService : IOrderService
             DoctorCode = req.DoctorCode,
             Diagnosis = req.Diagnosis,
             Note = req.Note,
+            DepartmentId = departmentId,
+            DoctorId = doctorId,
             Total = total,
+            EtaMinHours = ids.Select(id => tests[id]).Max(t => t.TatMinHours),
+            EtaMaxHours = ids.Select(id => tests[id]).Max(t => t.TatMaxHours),
             CreatedById = userId,
             Items = items,
             Samples = samples,
@@ -131,7 +152,15 @@ public partial class OrderService : IOrderService
         Guid userId, bool seeAll, string? query, string? stage, CancellationToken ct = default)
     {
         var q = _db.Orders.AsNoTracking().AsQueryable();
-        if (!seeAll) q = q.Where(o => o.CreatedById == userId);
+        if (!seeAll)
+        {
+            // Có phòng ban → thấy phiếu của phòng + phiếu mình tạo (gồm phiếu cũ chưa có phòng);
+            // không có phòng (khách lẻ) → chỉ phiếu mình tạo.
+            var deptId = await UserDeptAsync(userId, ct);
+            q = deptId != null
+                ? q.Where(o => o.DepartmentId == deptId || o.CreatedById == userId)
+                : q.Where(o => o.CreatedById == userId);
+        }
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -145,12 +174,29 @@ public partial class OrderService : IOrderService
         if (!string.IsNullOrWhiteSpace(stage) && Enum.TryParse<OrderStage>(stage, true, out var st))
             q = q.Where(o => o.Stage == st);
 
-        return await q.OrderByDescending(o => o.CreatedAt)
-            .Select(o => new OrderListItemDto(
-                o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(),
-                o.PatientName, o.PatientMaBN, o.Items.Count, o.Total, o.CreatedAt,
-                o.Result != null))
+        var rows = await q.OrderByDescending(o => o.CreatedAt)
+            .Select(o => new
+            {
+                o.Id, o.OrderNo, o.Source, o.Stage, o.PatientName, o.PatientMaBN,
+                ItemCount = o.Items.Count, o.Total, o.CreatedAt,
+                HasResult = o.Result != null,
+                ResultAt = o.Result != null ? (DateTimeOffset?)o.Result.UploadedAt : null,
+                DeptName = o.Department != null ? o.Department.Name : null,
+                o.ReceiveAt, o.EtaMinHours, o.EtaMaxHours,
+            })
             .ToListAsync(ct);
+
+        return rows.Select(o =>
+        {
+            // Mốc bắt đầu tính ETA: khi đã nhận mẫu thì từ ReceiveAt (chính xác); chưa thì tạm tính từ lúc chỉ định.
+            var anchor = o.ReceiveAt ?? o.CreatedAt;
+            DateTimeOffset? minAt = o.EtaMinHours is int mn ? AddWorkingHours(anchor, mn) : null;
+            DateTimeOffset? maxAt = o.EtaMaxHours is int mx ? AddWorkingHours(anchor, mx) : null;
+            return new OrderListItemDto(
+                o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(),
+                o.PatientName, o.PatientMaBN, o.ItemCount, o.Total, o.CreatedAt,
+                o.HasResult, o.DeptName, minAt, maxAt, o.ResultAt);
+        }).ToList();
     }
 
     public async Task<OrderDto?> GetAsync(Guid id, Guid userId, bool seeAll, CancellationToken ct = default)
@@ -160,7 +206,7 @@ public partial class OrderService : IOrderService
             .Include(x => x.Samples)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (o is null) return null;
-        if (!seeAll && o.CreatedById != userId) return null;
+        if (!await InScopeAsync(userId, seeAll, o.CreatedById, o.DepartmentId, ct)) return null;
         return Map(o, await ResultFileNameAsync(o.Id, ct));
     }
 
@@ -171,9 +217,11 @@ public partial class OrderService : IOrderService
             .Include(x => x.Samples)
             .Include(x => x.Patient)
             .Include(x => x.Events)
+            .Include(x => x.Department)
+            .Include(x => x.Doctor)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (o is null) return null;
-        if (!seeAll && o.CreatedById != userId) return null;
+        if (!await InScopeAsync(userId, seeAll, o.CreatedById, o.DepartmentId, ct)) return null;
         return MapFull(o, await ResultFileNameAsync(o.Id, ct));
     }
 
@@ -185,7 +233,8 @@ public partial class OrderService : IOrderService
             .Include(o => o.Patient)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
-        if (!seeAll && order.CreatedById != userId) return OrderResult.Fail("Không có quyền trên phiếu này.");
+        if (!await InScopeAsync(userId, seeAll, order.CreatedById, order.DepartmentId, ct))
+            return OrderResult.Fail("Không có quyền trên phiếu này.");
         if ((int)order.Stage >= (int)OrderStage.Gathered)
             return OrderResult.Fail("Phiếu đã chuyển cho phòng xét nghiệm — không sửa được nữa.");
 
@@ -239,6 +288,13 @@ public partial class OrderService : IOrderService
         order.DoctorCode = req.DoctorCode;
         order.Diagnosis = req.Diagnosis;
         order.Note = req.Note;
+        if (req.DoctorId is Guid did2)
+        {
+            if (!await _db.Employees.AnyAsync(e => e.Id == did2, ct))
+                return OrderResult.Fail("Bác sĩ chỉ định không hợp lệ.");
+            order.DoctorId = did2;
+        }
+        else order.DoctorId = null;
 
         // ---- Dựng lại dòng chỉ định + tổng ----
         var hadSamples = order.Samples.Count > 0;
@@ -263,6 +319,8 @@ public partial class OrderService : IOrderService
         }
         _db.AddRange(newItems);
         order.Total = total;
+        order.EtaMinHours = ids.Select(id => tests[id]).Max(t => t.TatMinHours);
+        order.EtaMaxHours = ids.Select(id => tests[id]).Max(t => t.TatMaxHours);
 
         // ---- Đồng bộ SID/mẫu (1 loại mẫu = 1 SID). Chỉ áp cho phiếu ĐÃ có SID sẵn. ----
         var neededTypes = newItems.Select(x => x.SampleType).Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
@@ -298,12 +356,24 @@ public partial class OrderService : IOrderService
         // "Có kết quả" chỉ đạt được khi tải file kết quả lên (UploadResultAsync) — không cho set tay.
         if (st == OrderStage.Resulted)
             return OrderResult.Fail("Chỉ chuyển sang \"Có kết quả\" bằng cách tải file kết quả lên.");
-        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+        var order = await _db.Orders.Include(o => o.Department).FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
+
+        // B6/B7 chỉ áp dụng khi phòng ban đặt phiếu có nhận bản cứng.
+        if ((st == OrderStage.HardCopySent || st == OrderStage.HardCopyReceived)
+            && !(order.Department?.HardCopyRequired ?? false))
+            return OrderResult.Fail("Phòng khám không nhận bản cứng — phiếu hoàn tất ở bước Trả kết quả.");
 
         var who = string.IsNullOrWhiteSpace(by) ? null : by.Trim();
         if (st == OrderStage.Collected && who != null) { order.CollectBy = who; order.CollectAt = DateTimeOffset.UtcNow; }
-        if (st == OrderStage.Received && who != null) { order.ReceiveBy = who; order.ReceiveAt = DateTimeOffset.UtcNow; }
+        if (st == OrderStage.Received)
+        {
+            order.ReceiveAt = DateTimeOffset.UtcNow;
+            if (who != null) order.ReceiveBy = who;
+            // ETA "trả KQ" bắt đầu tính từ lúc nhận mẫu, theo giờ làm việc (bỏ khung nghỉ 21:30–06:30).
+            if (order.EtaMaxHours is int mx && mx > 0)
+                order.ExpectedResultAt = AddWorkingHours(order.ReceiveAt.Value, mx);
+        }
 
         order.Stage = st;
         order.UpdatedAt = DateTimeOffset.UtcNow;
@@ -372,7 +442,7 @@ public partial class OrderService : IOrderService
             .Include(o => o.Result)
             .FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order?.Result is null) return null;
-        if (!seeAll && order.CreatedById != userId) return null;
+        if (!await InScopeAsync(userId, seeAll, order.CreatedById, order.DepartmentId, ct)) return null;
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -440,7 +510,8 @@ public partial class OrderService : IOrderService
     {
         var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
-        if (!seeAll && order.CreatedById != actorId) return OrderResult.Fail("Không có quyền trên phiếu này.");
+        if (!await InScopeAsync(actorId, seeAll, order.CreatedById, order.DepartmentId, ct))
+            return OrderResult.Fail("Không có quyền trên phiếu này.");
         if (order.Stage != OrderStage.Collected) return OrderResult.Fail("Phiếu không ở trạng thái Đã soạn mẫu.");
         if (string.IsNullOrWhiteSpace(r.SendVia)) return OrderResult.Fail("Cần chọn hình thức gửi.");
 
@@ -521,6 +592,7 @@ public partial class OrderService : IOrderService
     private static OrderDto Map(Order o, string? resultFileName) => new(
         o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(),
         o.PatientName, o.PatientMaBN, o.Diagnosis, o.Note, o.Total, o.CreatedAt,
+        o.EtaMinHours, o.EtaMaxHours,
         o.Items.Select(i => new OrderItemDto(
             i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
@@ -534,6 +606,7 @@ public partial class OrderService : IOrderService
     private static OrderFullDto MapFull(Order o, string? resultFileName) => new(
         o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(), (int)o.Stage < (int)OrderStage.Gathered,
         o.ClinicName, o.DoctorCode, o.Diagnosis, o.Note, o.Total, o.CreatedAt,
+        o.EtaMinHours, o.EtaMaxHours,
         new PatientDetailDto(
             o.Patient.Id, o.Patient.MaBN, o.Patient.FullName, o.Patient.Dob,
             o.Patient.Gender, o.Patient.Phone, o.Patient.Email, o.Patient.NationalId,
@@ -548,8 +621,53 @@ public partial class OrderService : IOrderService
         new ProgressDto(
             o.CollectPlace, o.CollectBy, o.CollectAt,
             o.SendVia, o.TrackingNo, o.Shipper, o.SendAt,
-            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt));
+            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt),
+        o.DepartmentId, o.Department?.Name,
+        o.DoctorId, o.Doctor?.FullName,
+        o.Department?.HardCopyRequired ?? false);
 
     private async Task<string> ActorNameAsync(Guid userId, CancellationToken ct)
         => (await _db.Users.Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync(ct)) ?? "";
+
+    /// <summary>Phòng ban của user (qua NV gắn kèm); null nếu chưa gắn (vd khách lẻ).</summary>
+    private Task<Guid?> UserDeptAsync(Guid userId, CancellationToken ct) =>
+        _db.Users.Where(u => u.Id == userId)
+            .Select(u => u.Employee != null ? (Guid?)u.Employee.DepartmentId : null)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>Phiếu có nằm trong phạm vi user không: seeAll → mọi phiếu;
+    /// có phòng ban → phiếu cùng phòng; không có → chỉ phiếu mình tạo.</summary>
+    private async Task<bool> InScopeAsync(Guid userId, bool seeAll, Guid createdById, Guid? orderDeptId, CancellationToken ct)
+    {
+        if (seeAll) return true;
+        var dept = await UserDeptAsync(userId, ct);
+        // Phòng khám: phiếu cùng phòng HOẶC phiếu mình tạo (gồm phiếu cũ chưa có phòng).
+        return dept != null ? (orderDeptId == dept || createdById == userId) : createdById == userId;
+    }
+
+    // Giờ làm việc PXN theo giờ VN; khung nghỉ 21:30–06:30 hôm sau KHÔNG tính vào ETA.
+    private static readonly TimeSpan WorkOpen = new(6, 30, 0);
+    private static readonly TimeSpan WorkClose = new(21, 30, 0);
+    private static readonly TimeSpan VnOffset = TimeSpan.FromHours(7);
+
+    /// <summary>Cộng <paramref name="hours"/> GIỜ LÀM VIỆC vào mốc bắt đầu, bỏ qua khung nghỉ.</summary>
+    private static DateTimeOffset AddWorkingHours(DateTimeOffset fromUtc, int hours)
+    {
+        var cur = fromUtc.ToOffset(VnOffset);
+        var remaining = TimeSpan.FromHours(hours);
+        var guard = 0;
+        while (remaining > TimeSpan.Zero && guard++ < 500)
+        {
+            var day = cur.Date; // Kind = Unspecified → hợp lệ cho DateTimeOffset(offset)
+            var open = new DateTimeOffset(day + WorkOpen, VnOffset);
+            var close = new DateTimeOffset(day + WorkClose, VnOffset);
+            if (cur < open) { cur = open; }
+            else if (cur >= close) { cur = new DateTimeOffset(day.AddDays(1) + WorkOpen, VnOffset); continue; }
+            var avail = close - cur;
+            if (remaining <= avail) { cur = cur.Add(remaining); break; }
+            remaining -= avail;
+            cur = new DateTimeOffset(day.AddDays(1) + WorkOpen, VnOffset);
+        }
+        return cur.ToUniversalTime();
+    }
 }

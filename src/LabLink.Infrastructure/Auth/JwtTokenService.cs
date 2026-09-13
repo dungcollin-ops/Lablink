@@ -24,10 +24,11 @@ public class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
             new("name", user.FullName),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+        if (!string.IsNullOrEmpty(user.Email))
+            claims.Add(new Claim(JwtRegisteredClaimNames.Email, user.Email));
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         // Quyền đưa vào claim "perm" để policy authorization kiểm tra.
         claims.AddRange(permissions.Select(p => new Claim("perm", p)));

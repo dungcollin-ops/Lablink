@@ -29,5 +29,11 @@ public class LabTest
     /// <summary>Thời gian trả kết quả (hiện trống trong dữ liệu nguồn).</summary>
     public string? Turnaround { get; set; }
 
+    /// <summary>Thời gian dự kiến trả kết quả — TỐI THIỂU (giờ). Dùng tính ETA.</summary>
+    public int? TatMinHours { get; set; }
+
+    /// <summary>Thời gian dự kiến trả kết quả — TỐI ĐA (giờ). Dùng tính ETA.</summary>
+    public int? TatMaxHours { get; set; }
+
     public bool IsActive { get; set; } = true;
 }

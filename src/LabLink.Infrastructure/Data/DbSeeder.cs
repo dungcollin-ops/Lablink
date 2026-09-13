@@ -45,22 +45,23 @@ public static class DbSeeder
         // 3) Demo users (dev/test) — bỏ qua nếu Seed:DemoUsers = false
         if (!seedDemoUsers) return;
 
-        var demoUsers = new (string Email, string FullName, string RoleCode)[]
+        var demoUsers = new (string Account, string Email, string FullName, string RoleCode)[]
         {
-            ("bacsi@lablink.local", "BS. Trần Minh", "doctor"),
-            ("khachle@lablink.local", "Nguyễn Khách Lẻ", "retail"),
-            ("lab@lablink.local", "KTV. Lê Hoà Hảo", "lab"),
-            ("admin@lablink.local", "Quản trị viên", "admin"),
+            ("bacsi", "bacsi@lablink.local", "BS. Trần Minh", "doctor"),
+            ("khachle", "khachle@lablink.local", "Nguyễn Khách Lẻ", "retail"),
+            ("lab", "lab@lablink.local", "KTV. Lê Hoà Hảo", "lab"),
+            ("admin", "admin@lablink.local", "Quản trị viên", "admin"),
         };
 
         var rolesByCode = await db.Roles.ToDictionaryAsync(r => r.Code, r => r, ct);
 
-        foreach (var (email, fullName, roleCode) in demoUsers)
+        foreach (var (account, email, fullName, roleCode) in demoUsers)
         {
-            if (await db.Users.AnyAsync(u => u.Email == email, ct)) continue;
+            if (await db.Users.AnyAsync(u => u.Email == email || u.AccountName == account, ct)) continue;
 
             var user = new User
             {
+                AccountName = account,
                 Email = email,
                 FullName = fullName,
                 PasswordHash = hasher.Hash("demo"),

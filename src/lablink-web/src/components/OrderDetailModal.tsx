@@ -150,7 +150,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
     } finally { setBusy(false); }
   }
 
-  const nx = !editing ? allowedNext(o.stage, perms) : null;
+  const nx = !editing ? allowedNext(o.stage, perms, o.hardCopyRequired) : null;
   async function advance() {
     if (!nx) return;
     setAdvancing(true);
@@ -162,6 +162,12 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
       setError(e instanceof ApiError ? e.message : "Lỗi chuyển bước");
     } finally { setAdvancing(false); }
   }
+
+  const etaAt = o.progress?.expectedResultAt;
+  const overdue = etaAt ? new Date(etaAt) < new Date() && o.stage !== "Resulted" && o.stage !== "HardCopySent" && o.stage !== "HardCopyReceived" : false;
+  const etaText = etaAt
+    ? `Dự kiến trả KQ: ${new Date(etaAt).toLocaleString("vi-VN")}${overdue ? " — ⚠️ QUÁ HẠN" : ""}`
+    : (o.etaMaxHours ? `Dự kiến trả KQ: ~${o.etaMinHours ?? o.etaMaxHours}–${o.etaMaxHours} giờ làm việc (tính từ khi nhận mẫu)` : "");
 
   const grid3: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 };
   const blkTitle: CSSProperties = { fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--text-faint)", margin: "16px 0 8px" };
@@ -213,6 +219,11 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
 
       {!editing ? (
         <>
+          {etaText && (
+            <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: overdue ? "var(--danger)" : "var(--action-hover)" }}>
+              ⏱ {etaText}
+            </div>
+          )}
           <div style={blkTitle}>Bệnh nhân</div>
           <div style={grid3}>
             <Row label="Mã BN" value={o.patient.maBN} />
@@ -228,10 +239,12 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
 
           <div style={blkTitle}>Chỉ định</div>
           <div style={grid3}>
-            <Row label="Bác sĩ chỉ định" value={o.doctorCode} />
-            <Row label="Phòng khám" value={o.clinicName} />
+            <Row label="Phòng ban đặt phiếu" value={o.departmentName} />
+            <Row label="Bác sĩ chỉ định" value={o.doctorName ?? o.doctorCode} />
+            <Row label="Phòng khám (ghi chú)" value={o.clinicName} />
             <Row label="Chẩn đoán" value={o.diagnosis} />
             <Row label="Ghi chú" value={o.note} />
+            <Row label="Bản cứng" value={o.hardCopyRequired ? "Có giao/nhận bản cứng (B6–B7)" : "Không nhận bản cứng — xong ở Có kết quả"} />
           </div>
 
           <div style={blkTitle}>Xét nghiệm ({o.items.length})</div>

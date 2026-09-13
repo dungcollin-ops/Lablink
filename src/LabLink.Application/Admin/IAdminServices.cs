@@ -14,6 +14,9 @@ public interface IUserAdminService
     Task<AdminResult> SetRolesAsync(Guid id, SetRolesRequest req, Guid actorId, CancellationToken ct = default);
     Task<AdminResult> SetStatusAsync(Guid id, SetStatusRequest req, Guid actorId, CancellationToken ct = default);
     Task<AdminResult> ResetPasswordAsync(Guid id, ResetPasswordRequest req, Guid actorId, CancellationToken ct = default);
+
+    /// <summary>Xóa hẳn user — chỉ khi CHƯA phát sinh dữ liệu (không có phiếu / đề xuất giá). Không tự xóa chính mình.</summary>
+    Task<AdminResult> DeleteAsync(Guid id, Guid actorId, CancellationToken ct = default);
 }
 
 public interface IRoleAdminService

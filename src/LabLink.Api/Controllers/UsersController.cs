@@ -49,6 +49,10 @@ public class UsersController : AdminControllerBase
     public async Task<IActionResult> ResetPassword(Guid id, [FromBody] ResetPasswordRequest req, CancellationToken ct)
         => Result(await _svc.ResetPasswordAsync(id, req, ActorId, ct));
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+        => Result(await _svc.DeleteAsync(id, ActorId, ct));
+
     private IActionResult Result(AdminResult r) =>
         r.Ok ? Ok(new { ok = true }) : BadRequest(new { message = r.Error });
 }

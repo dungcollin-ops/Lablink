@@ -39,10 +39,24 @@ export function nextStage(stage: string): string | null {
   return next === "Resulted" ? null : next;
 }
 
-/** Bước kế mà user (theo perms) được phép bấm; null nếu không. */
-export function allowedNext(stage: string, perms: string[]): { stage: string; perm: string } | null {
+/** Các bước bản cứng — chỉ áp dụng khi phòng khám nhận bản cứng. */
+const HARDCOPY_STAGES = ["HardCopySent", "HardCopyReceived"];
+
+/** Chuỗi trạng thái hiển thị cho 1 phiếu (bỏ B6/B7 nếu phòng khám không nhận bản cứng). */
+export function visibleFlow(hardCopyRequired: boolean): string[] {
+  return hardCopyRequired ? [...STAGE_FLOW] : STAGE_FLOW.filter((s) => !HARDCOPY_STAGES.includes(s));
+}
+
+/** Bước kế mà user (theo perms) được phép bấm; null nếu không.
+ * hardCopyRequired=false → không cho tiến vào B6/B7 (phiếu xong ở "Có kết quả"). */
+export function allowedNext(
+  stage: string,
+  perms: string[],
+  hardCopyRequired = true,
+): { stage: string; perm: string } | null {
   const next = nextStage(stage);
   if (!next) return null;
+  if (!hardCopyRequired && HARDCOPY_STAGES.includes(next)) return null;
   const perm = PERM_FOR_STAGE[next];
   return perm && perms.includes(perm) ? { stage: next, perm } : null;
 }

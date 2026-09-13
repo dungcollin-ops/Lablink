@@ -21,7 +21,8 @@ public record CreateOrderRequest(
     string? DoctorCode,
     string? Diagnosis,
     string? Note,
-    IReadOnlyList<OrderItemInput> Items);
+    IReadOnlyList<OrderItemInput> Items,
+    Guid? DoctorId = null);
 
 public record OrderItemDto(
     Guid Id, Guid LabTestId, string TestCode, string TestName, string SampleType, int Qty, long UnitPrice);
@@ -39,6 +40,8 @@ public record OrderDto(
     string? Note,
     long Total,
     DateTimeOffset CreatedAt,
+    int? EtaMinHours,
+    int? EtaMaxHours,
     IReadOnlyList<OrderItemDto> Items,
     IReadOnlyList<SampleDto> Samples,
     bool HasResult,
@@ -58,15 +61,21 @@ public record OrderFullDto(
     Guid Id, string OrderNo, string Source, string Stage, bool Editable,
     string? ClinicName, string? DoctorCode, string? Diagnosis, string? Note,
     long Total, DateTimeOffset CreatedAt,
+    int? EtaMinHours, int? EtaMaxHours,
     PatientDetailDto Patient,
     IReadOnlyList<OrderItemDto> Items,
     IReadOnlyList<SampleDto> Samples,
     IReadOnlyList<OrderEventDto> Events,
-    bool HasResult, string? ResultFileName, ProgressDto Progress);
+    bool HasResult, string? ResultFileName, ProgressDto Progress,
+    // Bước 4 — phòng ban đặt phiếu, bác sĩ chỉ định, và có nhận bản cứng hay không.
+    Guid? DepartmentId = null, string? DepartmentName = null,
+    Guid? DoctorId = null, string? DoctorName = null,
+    bool HardCopyRequired = false);
 
 public record UpdateOrderRequest(
     PatientInput Patient, string? ClinicName, string? DoctorCode,
-    string? Diagnosis, string? Note, IReadOnlyList<OrderItemInput> Items);
+    string? Diagnosis, string? Note, IReadOnlyList<OrderItemInput> Items,
+    Guid? DoctorId = null);
 
 public record ProgressDto(
     string? CollectPlace, string? CollectBy, DateTimeOffset? CollectAt,
@@ -90,7 +99,13 @@ public record OrderListItemDto(
     int ItemCount,
     long Total,
     DateTimeOffset CreatedAt,
-    bool HasResult);
+    bool HasResult,
+    string? DepartmentName = null,
+    // Mốc dự kiến trả KQ (min/max) — tính theo giờ làm việc.
+    DateTimeOffset? ExpectedMinAt = null,
+    DateTimeOffset? ExpectedMaxAt = null,
+    // Mốc trả KQ thực tế (khi đã có kết quả).
+    DateTimeOffset? ResultAt = null);
 
 /// <summary>File kết quả để tải về.</summary>
 public record ResultFile(string FileName, string ContentType, byte[] Content);

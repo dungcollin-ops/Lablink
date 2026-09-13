@@ -6,11 +6,13 @@ public static class Permissions
 {
     public const string CatalogRead = "catalog.read";
     public const string CatalogPriceEdit = "catalog.price.edit";
+    public const string CatalogManage = "catalog.manage";     // Thêm/Sửa/Xóa danh mục xét nghiệm (admin)
     public const string DealCreate = "deal.create";
     public const string DealRead = "deal.read";
     public const string DealApprove = "deal.approve";
     public const string OrderCreate = "order.create";
     public const string OrderRead = "order.read";
+    public const string OrderReadAll = "order.read.all";   // Xem MỌI phiếu (không giới hạn phòng ban)
     public const string SampleCollect = "sample.collect";   // B2 · Lấy mẫu
     public const string SampleSend = "sample.send";
     public const string SampleGather = "sample.gather";     // B3 · Gom mẫu
@@ -24,19 +26,20 @@ public static class Permissions
     public const string ResultVerify = "result.verify";
     public const string UserManage = "user.manage";
     public const string RoleManage = "role.manage";
+    public const string DepartmentManage = "department.manage";
     public const string AuditRead = "audit.read";
     public const string ReportRead = "report.read";
 
     public static readonly string[] All =
     {
-        CatalogRead, CatalogPriceEdit,
+        CatalogRead, CatalogPriceEdit, CatalogManage,
         DealCreate, DealRead, DealApprove,
-        OrderCreate, OrderRead,
+        OrderCreate, OrderRead, OrderReadAll,
         SampleCollect, SampleSend, SampleGather, SampleReceive, SampleQc,
         HardcopyDeliver, HardcopyReceive,
         SidPrint,
         ResultRead, ResultUpload, ResultVerify,
-        UserManage, RoleManage, AuditRead, ReportRead,
+        UserManage, RoleManage, DepartmentManage, AuditRead, ReportRead,
     };
 }
 
@@ -72,10 +75,27 @@ public static class DefaultRoles
         {
             Permissions.CatalogRead, Permissions.CatalogPriceEdit,
             Permissions.DealRead, Permissions.DealApprove,
-            Permissions.OrderRead,
+            Permissions.OrderRead, Permissions.OrderReadAll,
             Permissions.SampleCollect, Permissions.SampleGather, Permissions.SampleReceive, Permissions.SampleQc,
             Permissions.HardcopyDeliver,
             Permissions.SidPrint, Permissions.ResultRead, Permissions.ResultUpload, Permissions.ResultVerify,
+        }),
+        // ---- Role nội bộ FastLab (mỗi NV có thể gộp nhiều role) ----
+        new("fastlab_gather", "FastLab · Gom mẫu", new[]
+        {
+            Permissions.OrderRead, Permissions.OrderReadAll,
+            Permissions.SampleGather, Permissions.SidPrint,
+        }),
+        new("fastlab_receive", "FastLab · KTV nhận mẫu", new[]
+        {
+            Permissions.OrderRead, Permissions.OrderReadAll,
+            Permissions.SampleReceive, Permissions.SampleQc,
+            Permissions.ResultRead, Permissions.ResultUpload,
+        }),
+        new("fastlab_hardcopy", "FastLab · Giao bản cứng", new[]
+        {
+            Permissions.OrderRead, Permissions.OrderReadAll,
+            Permissions.HardcopyDeliver,
         }),
         new("admin", "Quản trị hệ thống", Permissions.All),
     };

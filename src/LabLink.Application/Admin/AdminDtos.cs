@@ -3,28 +3,36 @@ namespace LabLink.Application.Admin;
 // ---- Users ----
 public record UserListItemDto(
     Guid Id,
+    string AccountName,
     string FullName,
     string Email,
     string? Department,
     string Status,
     IReadOnlyList<string> Roles,
     DateTimeOffset? LastLoginAt,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    Guid? EmployeeId = null,
+    string? EmployeeName = null,
+    string? DepartmentName = null);
 
 public record CreateUserRequest(
-    string FullName,
-    string Email,
+    string AccountName,
     string Password,
     IReadOnlyList<string> RoleCodes,
+    string? Email = null,
+    string? FullName = null,
     string? Department = null,
     string? Phone = null,
-    string? EmployeeCode = null);
+    string? EmployeeCode = null,
+    Guid? EmployeeId = null);
 
 public record UpdateUserRequest(
-    string FullName,
+    string AccountName,
+    string? FullName,
     string? Department,
     string? Phone,
-    string? EmployeeCode);
+    string? EmployeeCode,
+    Guid? EmployeeId = null);
 
 public record SetRolesRequest(IReadOnlyList<string> RoleCodes);
 public record SetStatusRequest(string Status);

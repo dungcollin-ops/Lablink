@@ -10,6 +10,12 @@ import a from "./admin.module.css";
 import t from "./Track.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
+const fmtDT = (s?: string | null) => {
+  if (!s) return "—";
+  const d = new Date(s);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 const STAGES = [
   { key: "", label: "Tất cả" },
@@ -119,21 +125,35 @@ export default function Track({ session }: { session: Session }) {
             <span className={t.patient}>
               {o.patientName} <span className={t.maBN}>{o.patientMaBN}</span>
             </span>
-            {o.hasResult && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setViewResult({ id: o.id, orderNo: o.orderNo }); }}
-                title="Xem kết quả xét nghiệm"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "3px 10px", borderRadius: 999,
-                  border: "1px solid var(--success-soft)", background: "var(--success-soft)",
-                  color: "var(--success-text)", fontSize: 12, fontWeight: 600,
-                  cursor: "pointer", whiteSpace: "nowrap",
-                }}
-              >
-                👁 Kết quả
-              </button>
-            )}
+            {/* Cụm phải: nút Kết quả (nếu có) → mốc thời gian → thành tiền, luôn cùng vị trí giữa các dòng. */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+              {o.hasResult && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setViewResult({ id: o.id, orderNo: o.orderNo }); }}
+                  title="Xem kết quả xét nghiệm"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "3px 10px", borderRadius: 999,
+                    border: "1px solid var(--success-soft)", background: "var(--success-soft)",
+                    color: "var(--success-text)", fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", whiteSpace: "nowrap",
+                  }}
+                >
+                  👁 Kết quả
+                </button>
+              )}
+              <div style={{ textAlign: "right", fontSize: 11.5, lineHeight: 1.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                <div>Chỉ định: <b style={{ color: "var(--text-body)" }}>{fmtDT(o.createdAt)}</b></div>
+                {o.resultAt ? (
+                  <div>Đã trả KQ: <b style={{ color: "var(--success-text)" }}>{fmtDT(o.resultAt)}</b></div>
+                ) : (
+                  <>
+                    <div>Dự kiến KQ min: <b style={{ color: "var(--action-hover)" }}>{fmtDT(o.expectedMinAt)}</b></div>
+                    <div>Dự kiến KQ max: <b style={{ color: "var(--action-hover)" }}>{fmtDT(o.expectedMaxAt)}</b></div>
+                  </>
+                )}
+              </div>
+            </div>
             <span className={t.total}>{vnd.format(o.total)} ₫</span>
           </div>
 

@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
     public DbSet<Sample> Samples => Set<Sample>();
     public DbSet<TestResult> TestResults => Set<TestResult>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<SequenceCounter> Sequences => Set<SequenceCounter>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -31,8 +33,10 @@ public class AppDbContext : DbContext
             e.ToTable("users");
             e.HasKey(x => x.Id);
             e.Property(x => x.FullName).HasMaxLength(200).IsRequired();
-            e.Property(x => x.Email).HasMaxLength(256).IsRequired();
-            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.AccountName).HasMaxLength(120).IsRequired();
+            e.HasIndex(x => x.AccountName).IsUnique();
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.HasIndex(x => x.Email).IsUnique().HasFilter("\"Email\" IS NOT NULL");
             e.Property(x => x.EmployeeCode).HasMaxLength(50);
             e.HasIndex(x => x.EmployeeCode).IsUnique().HasFilter(null);
             e.Property(x => x.Phone).HasMaxLength(30);
@@ -162,8 +166,13 @@ public class AppDbContext : DbContext
             e.Property(x => x.ReceiveBy).HasMaxLength(120);
             e.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId)
                 .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Department).WithMany().HasForeignKey(x => x.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Doctor).WithMany().HasForeignKey(x => x.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.Stage, x.CreatedAt });
             e.HasIndex(x => x.CreatedById);
+            e.HasIndex(x => x.DepartmentId);
         });
 
         b.Entity<OrderItem>(e =>
@@ -201,6 +210,36 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.Order).WithOne(o => o.Result).HasForeignKey<TestResult>(x => x.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.OrderId).IsUnique();
+        });
+
+        b.Entity<Department>(e =>
+        {
+            e.ToTable("departments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Type).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Address).HasMaxLength(300);
+            e.Property(x => x.Phone).HasMaxLength(40);
+            e.HasIndex(x => x.Name);
+        });
+
+        b.Entity<Employee>(e =>
+        {
+            e.ToTable("employees");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Code).HasMaxLength(50);
+            e.Property(x => x.Position).HasMaxLength(60);
+            e.Property(x => x.Phone).HasMaxLength(40);
+            e.HasOne(x => x.Department).WithMany().HasForeignKey(x => x.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.DepartmentId);
+        });
+
+        b.Entity<User>(e =>
+        {
+            e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<OrderEvent>(e =>

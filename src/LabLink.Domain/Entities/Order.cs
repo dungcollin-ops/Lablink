@@ -25,6 +25,14 @@ public class Order
     public string? Diagnosis { get; set; }
     public string? Note { get; set; }
 
+    /// <summary>Phòng ban đặt phiếu (lấy từ NV của người tạo) — dùng để giới hạn hiển thị & cấu hình bản cứng.</summary>
+    public Guid? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+
+    /// <summary>Bác sĩ chỉ định (danh mục Nhân viên) — tùy chọn.</summary>
+    public Guid? DoctorId { get; set; }
+    public Employee? Doctor { get; set; }
+
     public long Total { get; set; }
 
     public Guid CreatedById { get; set; }
@@ -47,6 +55,10 @@ public class Order
     public DateTimeOffset? ReceiveAt { get; set; }
 
     public DateTimeOffset? ExpectedResultAt { get; set; }
+
+    /// <summary>Khoảng dự kiến trả KQ (giờ), chụp từ max(TAT) các xét nghiệm lúc tạo/sửa phiếu.</summary>
+    public int? EtaMinHours { get; set; }
+    public int? EtaMaxHours { get; set; }
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Sample> Samples { get; set; } = new List<Sample>();

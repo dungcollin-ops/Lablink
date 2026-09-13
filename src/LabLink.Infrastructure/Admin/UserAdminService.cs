@@ -23,13 +23,15 @@ public class UserAdminService : IUserAdminService
     {
         var q = _db.Users.AsNoTracking()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(u => u.Employee).ThenInclude(e => e!.Department)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query))
         {
             var t = query.Trim();
             q = q.Where(u => EF.Functions.ILike(u.FullName, $"%{t}%")
-                          || EF.Functions.ILike(u.Email, $"%{t}%"));
+                          || EF.Functions.ILike(u.AccountName, $"%{t}%")
+                          || (u.Email != null && EF.Functions.ILike(u.Email, $"%{t}%")));
         }
         if (!string.IsNullOrWhiteSpace(roleCode))
             q = q.Where(u => u.UserRoles.Any(ur => ur.Role.Code == roleCode));
@@ -44,6 +46,7 @@ public class UserAdminService : IUserAdminService
     {
         var u = await _db.Users.AsNoTracking()
             .Include(x => x.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(x => x.Employee).ThenInclude(e => e!.Department)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         return u is null ? null : Map(u);
     }
@@ -51,29 +54,41 @@ public class UserAdminService : IUserAdminService
     public async Task<(AdminResult result, Guid? id)> CreateAsync(
         CreateUserRequest req, Guid actorId, CancellationToken ct = default)
     {
-        var email = req.Email.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(req.FullName))
-            return (AdminResult.Fail("Thiếu họ tên."), null);
-        if (string.IsNullOrWhiteSpace(email))
-            return (AdminResult.Fail("Thiếu email."), null);
+        var accountName = req.AccountName?.Trim() ?? "";
+        var email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(accountName))
+            return (AdminResult.Fail("Thiếu tên tài khoản."), null);
         if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 4)
             return (AdminResult.Fail("Mật khẩu tối thiểu 4 ký tự."), null);
-        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
+        if (await _db.Users.AnyAsync(u => u.AccountName == accountName, ct))
+            return (AdminResult.Fail("Tên tài khoản đã tồn tại."), null);
+        if (email is not null && await _db.Users.AnyAsync(u => u.Email == email, ct))
             return (AdminResult.Fail("Email đã tồn tại."), null);
+
+        // Họ tên lấy từ Nhân viên nếu có gắn, không thì dùng tên tài khoản.
+        var fullName = req.FullName?.Trim();
+        var department = req.Department;
+        if (req.EmployeeId is Guid ceid)
+        {
+            var emp = await _db.Employees.Include(e => e.Department).FirstOrDefaultAsync(e => e.Id == ceid, ct);
+            if (emp is not null) { fullName = emp.FullName; department = emp.Department.Name; }
+        }
 
         var user = new User
         {
-            FullName = req.FullName.Trim(),
+            AccountName = accountName,
+            FullName = string.IsNullOrWhiteSpace(fullName) ? accountName : fullName,
             Email = email,
             Phone = req.Phone,
-            Department = req.Department,
+            Department = department,
             EmployeeCode = string.IsNullOrWhiteSpace(req.EmployeeCode) ? null : req.EmployeeCode,
+            EmployeeId = req.EmployeeId,
             PasswordHash = _hasher.Hash(req.Password),
         };
         _db.Users.Add(user);
         await AssignRolesAsync(user, req.RoleCodes, ct);
 
-        Audit(actorId, "user.create", "User", user.Id.ToString(), user.Email);
+        Audit(actorId, "user.create", "User", user.Id.ToString(), user.AccountName);
         await _db.SaveChangesAsync(ct);
         return (AdminResult.Success, user.Id);
     }
@@ -82,12 +97,29 @@ public class UserAdminService : IUserAdminService
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user is null) return AdminResult.Fail("Không tìm thấy người dùng.");
-        if (string.IsNullOrWhiteSpace(req.FullName)) return AdminResult.Fail("Thiếu họ tên.");
 
-        user.FullName = req.FullName.Trim();
+        var accountName = req.AccountName?.Trim();
+        if (!string.IsNullOrWhiteSpace(accountName) && accountName != user.AccountName)
+        {
+            if (await _db.Users.AnyAsync(u => u.AccountName == accountName && u.Id != id, ct))
+                return AdminResult.Fail("Tên tài khoản đã tồn tại.");
+            user.AccountName = accountName;
+        }
+
         user.Department = req.Department;
         user.Phone = req.Phone;
         user.EmployeeCode = string.IsNullOrWhiteSpace(req.EmployeeCode) ? null : req.EmployeeCode;
+        user.EmployeeId = req.EmployeeId;
+        // Họ tên & phòng ban theo Nhân viên gắn kèm.
+        if (req.EmployeeId is Guid eid)
+        {
+            var emp = await _db.Employees.Include(e => e.Department).FirstOrDefaultAsync(e => e.Id == eid, ct);
+            if (emp is not null) { user.FullName = emp.FullName; user.Department = emp.Department.Name; }
+        }
+        else if (!string.IsNullOrWhiteSpace(req.FullName))
+        {
+            user.FullName = req.FullName.Trim();
+        }
 
         Audit(actorId, "user.update", "User", user.Id.ToString(), null);
         await _db.SaveChangesAsync(ct);
@@ -134,6 +166,30 @@ public class UserAdminService : IUserAdminService
         return AdminResult.Success;
     }
 
+    public async Task<AdminResult> DeleteAsync(Guid id, Guid actorId, CancellationToken ct = default)
+    {
+        if (id == actorId) return AdminResult.Fail("Không thể tự xóa tài khoản của mình.");
+
+        var user = await _db.Users.Include(u => u.UserRoles).FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (user is null) return AdminResult.Fail("Không tìm thấy người dùng.");
+
+        // Chỉ xóa khi chưa phát sinh dữ liệu nghiệp vụ.
+        if (await _db.Orders.AnyAsync(o => o.CreatedById == id, ct))
+            return AdminResult.Fail("Đã phát sinh phiếu — không xóa được (hãy khoá tài khoản).");
+        if (await _db.PriceDealBatches.AnyAsync(b => b.ProposedById == id, ct))
+            return AdminResult.Fail("Đã phát sinh đề xuất giá — không xóa được (hãy khoá tài khoản).");
+
+        // Dọn dữ liệu phụ thuộc: vai trò + nhật ký hoạt động của chính user này.
+        _db.UserRoles.RemoveRange(user.UserRoles);
+        var logs = await _db.AuditLogs.Where(a => a.UserId == id).ToListAsync(ct);
+        _db.AuditLogs.RemoveRange(logs);
+        _db.Users.Remove(user);
+
+        Audit(actorId, "user.delete", "User", id.ToString(), user.AccountName);
+        await _db.SaveChangesAsync(ct);
+        return AdminResult.Success;
+    }
+
     private async Task AssignRolesAsync(User user, IReadOnlyList<string> codes, CancellationToken ct)
     {
         if (codes.Count == 0) return;
@@ -153,8 +209,9 @@ public class UserAdminService : IUserAdminService
         });
 
     private static UserListItemDto Map(User u) => new(
-        u.Id, u.FullName, u.Email, u.Department,
+        u.Id, u.AccountName, u.FullName, u.Email ?? "", u.Department,
         u.Status.ToString(),
         u.UserRoles.Select(ur => ur.Role.Code).ToList(),
-        u.LastLoginAt, u.CreatedAt);
+        u.LastLoginAt, u.CreatedAt,
+        u.EmployeeId, u.Employee?.FullName, u.Employee?.Department?.Name);
 }

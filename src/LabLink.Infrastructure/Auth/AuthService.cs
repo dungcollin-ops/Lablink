@@ -21,11 +21,14 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
+        // Định danh đăng nhập = Tên tài khoản HOẶC Email (khách lẻ). So khớp không phân biệt hoa/thường.
+        var login = request.Email.Trim();
+        var loginLower = login.ToLowerInvariant();
 
         var user = await _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role).ThenInclude(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
-            .FirstOrDefaultAsync(u => u.Email == email, ct);
+            .FirstOrDefaultAsync(u => u.AccountName == login
+                || (u.Email != null && u.Email == loginLower), ct);
 
         if (user is null || user.Status != UserStatus.Active) return null;
         if (!_hasher.Verify(request.Password, user.PasswordHash)) return null;
@@ -63,5 +66,5 @@ public class AuthService : IAuthService
     }
 
     private static MeDto ToMe(User user, List<string> roles, List<string> permissions) =>
-        new(user.Id, user.FullName, user.Email, roles, permissions);
+        new(user.Id, user.FullName, user.Email ?? "", roles, permissions, user.EmployeeId);
 }

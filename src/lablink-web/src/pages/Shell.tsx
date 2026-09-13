@@ -11,6 +11,8 @@ import Track from "./Track";
 import LabOrders from "./LabOrders";
 import Users from "./Users";
 import Roles from "./Roles";
+import Departments from "./Departments";
+import Employees from "./Employees";
 import Audit from "./Audit";
 import Report from "./Report";
 import styles from "./Shell.module.css";
@@ -85,6 +87,10 @@ export default function Shell({ session, onLogout }: Props) {
           <Track session={session} />
         ) : view === "orders" ? (
           <LabOrders session={session} />
+        ) : view === "departments" ? (
+          <Departments session={session} />
+        ) : view === "employees" ? (
+          <Employees session={session} />
         ) : view === "users" ? (
           <Users session={session} />
         ) : view === "roles" ? (

@@ -7,6 +7,7 @@ import {
   type OrderDto,
   type PatientSearch,
 } from "../api/orders";
+import { listDoctorsForOrder, type Employee } from "../api/employees";
 import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
@@ -78,6 +79,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [diagnosis, setDiagnosis] = useState("");
   const [doctorCode, setDoctorCode] = useState("");
   const [clinicName, setClinicName] = useState("");
+  const [doctorId, setDoctorId] = useState("");
+  const [doctors, setDoctors] = useState<Employee[]>([]);
 
   const [pQuery, setPQuery] = useState("");
   const [pResults, setPResults] = useState<PatientSearch[]>([]);
@@ -94,6 +97,20 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [comboBusy, setComboBusy] = useState("");
 
   const set = (k: keyof Patient, v: string) => setPatient((p) => ({ ...p, [k]: v }));
+
+  // Danh mục bác sĩ (theo phòng của người tạo) cho ô "Bác sĩ chỉ định".
+  useEffect(() => {
+    if (!isDoctor) return;
+    listDoctorsForOrder(token)
+      .then((list) => {
+        setDoctors(list);
+        // Mặc định chọn sẵn bác sĩ = nhân viên gắn với tài khoản đang đăng nhập (nếu có trong danh sách).
+        if (session.employeeId && list.some((d) => d.id === session.employeeId)) {
+          setDoctorId((cur) => cur || session.employeeId!);
+        }
+      })
+      .catch(() => setDoctors([]));
+  }, [token, isDoctor, session.employeeId]);
 
   // Tìm bệnh nhân cũ (bác sĩ)
   useEffect(() => {
@@ -204,12 +221,14 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
         clinicName: isDoctor ? clinicName || undefined : undefined,
         doctorCode: isDoctor ? doctorCode || undefined : undefined,
         diagnosis: isDoctor ? diagnosis || undefined : undefined,
+        doctorId: isDoctor ? doctorId || undefined : undefined,
         items: cart.map((x) => ({ labTestId: x.labTestId, sampleType: x.sampleType, qty: x.qty })),
       });
       setCreated(order);
       setCart([]);
       setPatient(emptyPatient);
       setDiagnosis("");
+      setDoctorId("");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Lỗi gửi chỉ định");
     } finally {
@@ -359,11 +378,20 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                     <input className={s.input} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
                   </div>
                   <div className={s.field}>
-                    <label className={s.label}>Bác sĩ chỉ định</label>
-                    <input className={s.input} value={doctorCode} onChange={(e) => setDoctorCode(e.target.value)} />
+                    <label className={s.label}>Bác sĩ chỉ định (danh mục)</label>
+                    {doctors.length > 0 ? (
+                      <select className={s.input} value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
+                        <option value="">— Chọn bác sĩ —</option>
+                        {doctors.map((d) => (
+                          <option key={d.id} value={d.id}>{d.fullName} · {d.departmentName}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input className={s.input} placeholder="Nhập tên bác sĩ" value={doctorCode} onChange={(e) => setDoctorCode(e.target.value)} />
+                    )}
                   </div>
                   <div className={s.field}>
-                    <label className={s.label}>Phòng khám</label>
+                    <label className={s.label}>Phòng khám (ghi chú)</label>
                     <input className={s.input} value={clinicName} onChange={(e) => setClinicName(e.target.value)} />
                   </div>
                 </>

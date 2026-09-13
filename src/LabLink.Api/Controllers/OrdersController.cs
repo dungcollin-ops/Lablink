@@ -14,8 +14,8 @@ public class OrdersController : AdminControllerBase
 
     public OrdersController(IOrderService svc) => _svc = svc;
 
-    // Lab (nhận mẫu) thấy mọi phiếu; bác sĩ/khách chỉ thấy phiếu của mình.
-    private bool SeeAll => HasPerm(Permissions.SampleReceive);
+    // Nội bộ FastLab (order.read.all) thấy mọi phiếu; phòng khám thấy phiếu của phòng; khách lẻ chỉ phiếu của mình.
+    private bool SeeAll => HasPerm(Permissions.OrderReadAll);
 
     /// <summary>Tạo phiếu chỉ định → sinh SID → trả phiếu.</summary>
     [HttpPost]

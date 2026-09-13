@@ -30,4 +30,37 @@ public class CatalogController : ControllerBase
     [HasPermission(Permissions.CatalogRead)]
     public async Task<ActionResult<CatalogFacets>> Facets(CancellationToken ct)
         => Ok(await _catalog.GetFacetsAsync(ct));
+
+    /// <summary>Sửa TG Min/Max (giờ) của 1 xét nghiệm.</summary>
+    [HttpPut("{id:guid}/tat")]
+    [HasPermission(Permissions.CatalogPriceEdit)]
+    public async Task<IActionResult> UpdateTat(Guid id, [FromBody] UpdateTatRequest req, CancellationToken ct)
+        => await _catalog.UpdateTatAsync(id, req.TatMinHours, req.TatMaxHours, ct) ? NoContent() : NotFound();
+
+    /// <summary>Thêm 1 xét nghiệm vào danh mục (admin).</summary>
+    [HttpPost]
+    [HasPermission(Permissions.CatalogManage)]
+    public async Task<IActionResult> Create([FromBody] CatalogItemInput input, CancellationToken ct)
+    {
+        var r = await _catalog.CreateAsync(input, ct);
+        return r.Ok ? Ok(r.Item) : BadRequest(new { message = r.Error });
+    }
+
+    /// <summary>Sửa đầy đủ 1 xét nghiệm (admin).</summary>
+    [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.CatalogManage)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CatalogItemInput input, CancellationToken ct)
+    {
+        var r = await _catalog.UpdateAsync(id, input, ct);
+        return r.Ok ? Ok(r.Item) : BadRequest(new { message = r.Error });
+    }
+
+    /// <summary>Xóa hẳn 1 xét nghiệm (admin) — chặn nếu đã dùng trong phiếu/đề nghị giá.</summary>
+    [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.CatalogManage)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var r = await _catalog.DeleteAsync(id, ct);
+        return r.Ok ? Ok(new { ok = true }) : BadRequest(new { message = r.Error });
+    }
 }

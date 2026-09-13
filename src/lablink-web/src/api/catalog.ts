@@ -8,6 +8,8 @@ export interface CatalogItem {
   provider: string;
   listPrice: number;
   samples: string[];
+  tatMinHours?: number | null;
+  tatMaxHours?: number | null;
 }
 
 export interface CatalogPage {
@@ -50,4 +52,64 @@ export async function fetchFacets(token?: string): Promise<CatalogFacets> {
   const res = await fetch(`${API_BASE}/api/catalog/facets`, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`facets ${res.status}`);
   return res.json();
+}
+
+export interface CatalogItemInput {
+  code: string;
+  name: string;
+  group: string;
+  provider: string;
+  listPrice: number;
+  samples: string[];
+  tatMinHours?: number | null;
+  tatMaxHours?: number | null;
+}
+
+async function jsonOrThrow(res: Response): Promise<Response> {
+  if (!res.ok) {
+    let msg = `Lỗi ${res.status}`;
+    try { msg = (await res.json()).message ?? msg; } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  return res;
+}
+
+/** Thêm 1 xét nghiệm (admin). */
+export async function createCatalog(token: string | undefined, body: CatalogItemInput): Promise<CatalogItem> {
+  const res = await jsonOrThrow(await fetch(`${API_BASE}/api/catalog`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(body),
+  }));
+  return res.json();
+}
+
+/** Sửa đầy đủ 1 xét nghiệm (admin). */
+export async function updateCatalog(token: string | undefined, id: string, body: CatalogItemInput): Promise<CatalogItem> {
+  const res = await jsonOrThrow(await fetch(`${API_BASE}/api/catalog/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(body),
+  }));
+  return res.json();
+}
+
+/** Xóa hẳn 1 xét nghiệm (admin). */
+export async function deleteCatalog(token: string | undefined, id: string): Promise<void> {
+  await jsonOrThrow(await fetch(`${API_BASE}/api/catalog/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  }));
+}
+
+/** Sửa TG Min/Max (giờ) của 1 xét nghiệm. */
+export async function updateCatalogTat(
+  token: string | undefined, id: string, tatMinHours: number | null, tatMaxHours: number | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/catalog/${id}/tat`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ tatMinHours, tatMaxHours }),
+  });
+  if (!res.ok) throw new Error(`Lưu TG thất bại (${res.status})`);
 }

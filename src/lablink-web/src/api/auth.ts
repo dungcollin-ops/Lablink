@@ -8,6 +8,7 @@ interface ApiMe {
   email: string;
   roles: string[];
   permissions: string[];
+  employeeId?: string | null;
 }
 
 interface ApiLoginResponse {
@@ -22,6 +23,7 @@ function toSession(data: ApiLoginResponse): Session {
     user: { id: u.id, fullName: u.fullName, email: u.email, role: u.roles[0] as Role },
     role: u.roles[0] as Role,
     permissions: u.permissions as Session["permissions"],
+    employeeId: u.employeeId ?? null,
     token: data.token,
   };
 }

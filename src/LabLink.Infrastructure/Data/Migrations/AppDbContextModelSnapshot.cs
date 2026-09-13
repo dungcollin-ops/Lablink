@@ -60,6 +60,86 @@ namespace LabLink.Infrastructure.Data.Migrations
                     b.ToTable("audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("LabLink.Domain.Entities.Department", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HardCopyRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("departments", (string)null);
+                });
+
+            modelBuilder.Entity("LabLink.Domain.Entities.Employee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("employees", (string)null);
+                });
+
             modelBuilder.Entity("LabLink.Domain.Entities.LabTest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -100,6 +180,12 @@ namespace LabLink.Infrastructure.Data.Migrations
                     b.Property<List<string>>("Samples")
                         .IsRequired()
                         .HasColumnType("text[]");
+
+                    b.Property<int?>("TatMaxHours")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TatMinHours")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Turnaround")
                         .HasMaxLength(120)
@@ -144,6 +230,9 @@ namespace LabLink.Infrastructure.Data.Migrations
                     b.Property<Guid>("CreatedById")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Diagnosis")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -151,6 +240,15 @@ namespace LabLink.Infrastructure.Data.Migrations
                     b.Property<string>("DoctorCode")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("DoctorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("EtaMaxHours")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("EtaMinHours")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("ExpectedResultAt")
                         .HasColumnType("timestamp with time zone");
@@ -218,6 +316,10 @@ namespace LabLink.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("DoctorId");
 
                     b.HasIndex("OrderNo")
                         .IsUnique();
@@ -601,6 +703,11 @@ namespace LabLink.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -609,13 +716,15 @@ namespace LabLink.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(120)");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("EmployeeCode")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -638,11 +747,17 @@ namespace LabLink.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
+                    b.HasIndex("AccountName")
                         .IsUnique();
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasFilter("\"Email\" IS NOT NULL");
 
                     b.HasIndex("EmployeeCode")
                         .IsUnique();
+
+                    b.HasIndex("EmployeeId");
 
                     b.ToTable("users", (string)null);
                 });
@@ -665,13 +780,38 @@ namespace LabLink.Infrastructure.Data.Migrations
                     b.ToTable("user_roles", (string)null);
                 });
 
+            modelBuilder.Entity("LabLink.Domain.Entities.Employee", b =>
+                {
+                    b.HasOne("LabLink.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+                });
+
             modelBuilder.Entity("LabLink.Domain.Entities.Order", b =>
                 {
+                    b.HasOne("LabLink.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("LabLink.Domain.Entities.Employee", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("LabLink.Domain.Entities.Patient", "Patient")
                         .WithMany()
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Doctor");
 
                     b.Navigation("Patient");
                 });
@@ -767,6 +907,16 @@ namespace LabLink.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("LabLink.Domain.Entities.User", b =>
+                {
+                    b.HasOne("LabLink.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("LabLink.Domain.Entities.UserRole", b =>

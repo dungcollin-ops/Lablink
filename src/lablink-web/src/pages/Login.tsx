@@ -47,13 +47,13 @@ export default function Login({ onLogin }: Props) {
         <div className={styles.sub}>Đăng nhập để tiếp tục</div>
 
         <div className={styles.field}>
-          <label className={styles.label}>Email</label>
+          <label className={styles.label}>Tên tài khoản hoặc Email</label>
           <input
             className={styles.input}
-            type="email"
+            type="text"
             value={email}
             autoFocus
-            placeholder="ten@lablink.local"
+            placeholder="tài khoản hoặc ten@lablink.local"
             onChange={(e) => {
               setEmail(e.target.value);
               setError("");

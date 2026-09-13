@@ -15,6 +15,8 @@ export interface Session {
   user: User;
   role: Role;
   permissions: Permission[];
+  /** Nhân viên (danh mục) gắn với tài khoản — để form chọn sẵn bác sĩ chỉ định. */
+  employeeId?: string | null;
   /** JWT khi đăng nhập qua API thật; undefined ở chế độ mock. */
   token?: string;
 }

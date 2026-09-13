@@ -2,6 +2,7 @@ import { api } from "./http";
 
 export interface AdminUser {
   id: string;
+  accountName: string;
   fullName: string;
   email: string;
   department?: string | null;
@@ -9,6 +10,9 @@ export interface AdminUser {
   roles: string[];
   lastLoginAt?: string | null;
   createdAt: string;
+  employeeId?: string | null;
+  employeeName?: string | null;
+  departmentName?: string | null;
 }
 
 export interface AdminRole {
@@ -43,8 +47,14 @@ export const listUsers = (token: string | undefined, q?: string) =>
 
 export const createUser = (
   token: string | undefined,
-  body: { fullName: string; email: string; password: string; roleCodes: string[]; department?: string },
+  body: { accountName: string; email?: string; password: string; roleCodes: string[]; fullName?: string; department?: string; employeeId?: string | null },
 ) => api<{ id: string }>(token, "/api/admin/users", { method: "POST", body: JSON.stringify(body) });
+
+export const updateUser = (
+  token: string | undefined,
+  id: string,
+  body: { accountName: string; fullName?: string; department?: string; phone?: string; employeeCode?: string; employeeId?: string | null },
+) => api(token, `/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(body) });
 
 export const setUserRoles = (token: string | undefined, id: string, roleCodes: string[]) =>
   api(token, `/api/admin/users/${id}/roles`, { method: "PUT", body: JSON.stringify({ roleCodes }) });
@@ -54,6 +64,9 @@ export const setUserStatus = (token: string | undefined, id: string, status: str
 
 export const resetPassword = (token: string | undefined, id: string, newPassword: string) =>
   api(token, `/api/admin/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) });
+
+export const deleteUser = (token: string | undefined, id: string) =>
+  api(token, `/api/admin/users/${id}`, { method: "DELETE" });
 
 // ---- Roles ----
 export const listRoles = (token: string | undefined) => api<AdminRole[]>(token, "/api/admin/roles");
