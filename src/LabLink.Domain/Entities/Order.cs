@@ -40,9 +40,19 @@ public class Order
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     // ----- Tiến trình mẫu chi tiết (README · Screen 8 · sp) -----
+    // Giai đoạn đầu (sau Chỉ định) có 3 xác nhận: Nhận-đi-gom (song song) · Đã-lấy-mẫu · Đã-gom-mẫu.
+    /// <summary>Nhận đi gom mẫu — NV gom xác nhận sẽ đi gom (báo cho mọi người biết); song song với lấy mẫu.</summary>
+    public string? GatherClaimBy { get; set; }
+    public DateTimeOffset? GatherClaimAt { get; set; }
+
     public string? CollectPlace { get; set; }
+    /// <summary>Đã lấy mẫu — điều dưỡng phòng khám lấy mẫu từ bệnh nhân.</summary>
     public string? CollectBy { get; set; }
     public DateTimeOffset? CollectAt { get; set; }
+
+    /// <summary>Đã gom mẫu — NV gom nhận mẫu từ điều dưỡng (cần đã lấy mẫu trước).</summary>
+    public string? GatherBy { get; set; }
+    public DateTimeOffset? GatherAt { get; set; }
 
     /// <summary>Hình thức gửi: Direct | Bus | Grab.</summary>
     public string? SendVia { get; set; }

@@ -334,39 +334,74 @@ public partial class OrderService : IOrderService
 
     public async Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, string? by = null, CancellationToken ct = default)
     {
-        if (!Enum.TryParse<OrderStage>(stage, true, out var st))
-            return OrderResult.Fail("Trạng thái không hợp lệ.");
-        // "Có kết quả" chỉ đạt được khi tải file kết quả lên (UploadResultAsync) — không cho set tay.
-        if (st == OrderStage.Resulted)
-            return OrderResult.Fail("Chỉ chuyển sang \"Có kết quả\" bằng cách tải file kết quả lên.");
         var order = await _db.Orders.Include(o => o.Department).FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
 
-        // B6/B7 chỉ áp dụng khi phòng ban đặt phiếu có nhận bản cứng.
-        if ((st == OrderStage.HardCopySent || st == OrderStage.HardCopyReceived)
-            && !(order.Department?.HardCopyRequired ?? false))
-            return OrderResult.Fail("Phòng khám không nhận bản cứng — phiếu hoàn tất ở bước Trả kết quả.");
-
         var who = string.IsNullOrWhiteSpace(by) ? null : by.Trim();
-        if (st == OrderStage.Collected && who != null) { order.CollectBy = who; order.CollectAt = DateTimeOffset.UtcNow; }
-        if (st == OrderStage.Received)
+        var actorName = await ActorNameAsync(actorId, ct);
+        var now = DateTimeOffset.UtcNow;
+
+        async Task Finish(OrderStage eventStep, string? note, string detail)
         {
-            order.ReceiveAt = DateTimeOffset.UtcNow;
-            if (who != null) order.ReceiveBy = who;
-            // ETA "trả KQ" bắt đầu tính từ lúc nhận mẫu, theo giờ làm việc (bỏ khung nghỉ 21:30–06:30).
-            if (order.EtaMaxHours is int mx && mx > 0)
-                order.ExpectedResultAt = AddWorkingHours(order.ReceiveAt.Value, mx);
+            order.UpdatedAt = now;
+            _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = eventStep, ActorId = actorId, ActorName = actorName, At = now, Note = note });
+            _db.AuditLogs.Add(new AuditLog { UserId = actorId, Action = "order.stage", ObjectType = "Order", ObjectId = order.Id.ToString(), Detail = detail });
+            await _db.SaveChangesAsync(ct);
         }
 
-        order.Stage = st;
-        order.UpdatedAt = DateTimeOffset.UtcNow;
-        _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = st, ActorId = actorId, ActorName = await ActorNameAsync(actorId, ct), At = DateTimeOffset.UtcNow, Note = who != null ? $"Người thực hiện: {who}" : null });
-        _db.AuditLogs.Add(new AuditLog
+        switch (stage)
         {
-            UserId = actorId, Action = "order.stage",
-            ObjectType = "Order", ObjectId = order.Id.ToString(), Detail = $"{order.OrderNo} → {st}",
-        });
-        await _db.SaveChangesAsync(ct);
+            // ---- Giai đoạn đầu (Ordered): 3 xác nhận, Nhận-đi-gom & Đã-lấy chạy song song ----
+            case "GatherClaim": // NV gom: "Nhận đi gom mẫu" (báo đang xử lý; không cần lấy mẫu trước)
+                if (order.Stage != OrderStage.Ordered) return OrderResult.Fail("Chỉ nhận đi gom ở giai đoạn đầu.");
+                if (order.GatherClaimAt != null) return OrderResult.Fail("Đã có người nhận đi gom mẫu.");
+                order.GatherClaimBy = who ?? actorName; order.GatherClaimAt = now;
+                await Finish(OrderStage.Ordered, $"Nhận đi gom mẫu: {order.GatherClaimBy}", $"{order.OrderNo} · nhận đi gom");
+                break;
+
+            case "Collected": // Điều dưỡng: "Đã lấy mẫu"
+                if (order.Stage != OrderStage.Ordered) return OrderResult.Fail("Phiếu đã qua giai đoạn lấy mẫu.");
+                if (order.CollectAt != null) return OrderResult.Fail("Đã lấy mẫu rồi.");
+                order.CollectBy = who ?? actorName; order.CollectAt = now;
+                await Finish(OrderStage.Collected, who != null ? $"Người lấy: {who}" : null, $"{order.OrderNo} · đã lấy mẫu");
+                break;
+
+            case "Gathered": // NV gom: "Đã gom mẫu" (nhận mẫu từ điều dưỡng) — CẦN đã lấy mẫu
+                // Bác sĩ: từ Ordered (đã có cờ lấy mẫu). Khách lẻ: từ Collected (AssignCollect đã set).
+                if (order.Stage != OrderStage.Ordered && order.Stage != OrderStage.Collected)
+                    return OrderResult.Fail("Phiếu không ở giai đoạn gom mẫu.");
+                if (order.CollectAt == null) return OrderResult.Fail("Chưa lấy mẫu — chưa gom được (điều dưỡng cần bấm \"Đã lấy mẫu\" trước).");
+                order.GatherBy = who ?? actorName; order.GatherAt = now;
+                order.Stage = OrderStage.Gathered; // đã lấy + gom → sẵn sàng nhận
+                await Finish(OrderStage.Gathered, who != null ? $"Người gom: {who}" : null, $"{order.OrderNo} → Đã gom mẫu");
+                break;
+
+            case "Received": // KTV FastLab: "Nhận mẫu"
+                if (order.Stage != OrderStage.Gathered) return OrderResult.Fail("Phiếu chưa gom xong — chưa nhận được.");
+                order.ReceiveAt = now;
+                if (who != null) order.ReceiveBy = who;
+                // ETA "trả KQ" tính từ lúc nhận mẫu, theo giờ làm việc (bỏ khung nghỉ 21:30–06:30).
+                if (order.EtaMaxHours is int mx && mx > 0) order.ExpectedResultAt = AddWorkingHours(now, mx);
+                order.Stage = OrderStage.Received;
+                await Finish(OrderStage.Received, who != null ? $"Người nhận: {who}" : null, $"{order.OrderNo} → Nhận mẫu");
+                break;
+
+            case "HardCopySent":
+            case "HardCopyReceived":
+                if (!(order.Department?.HardCopyRequired ?? false))
+                    return OrderResult.Fail("Phòng khám không nhận bản cứng — phiếu hoàn tất ở bước Trả kết quả.");
+                var hc = stage == "HardCopySent" ? OrderStage.HardCopySent : OrderStage.HardCopyReceived;
+                order.Stage = hc;
+                await Finish(hc, who != null ? $"Người thực hiện: {who}" : null, $"{order.OrderNo} → {hc}");
+                break;
+
+            case "Resulted":
+                return OrderResult.Fail("Chỉ chuyển sang \"Có kết quả\" bằng cách tải file kết quả lên.");
+
+            default:
+                return OrderResult.Fail("Trạng thái không hợp lệ.");
+        }
+
         return OrderResult.Success(await GetTracked(order.Id, ct));
     }
 
@@ -584,7 +619,8 @@ public partial class OrderService : IOrderService
         new ProgressDto(
             o.CollectPlace, o.CollectBy, o.CollectAt,
             o.SendVia, o.TrackingNo, o.Shipper, o.SendAt,
-            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt));
+            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt,
+            o.GatherClaimBy, o.GatherClaimAt, o.GatherBy, o.GatherAt));
 
     private static OrderFullDto MapFull(Order o, string? resultFileName) => new(
         o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(), (int)o.Stage < (int)OrderStage.Gathered,
@@ -604,7 +640,8 @@ public partial class OrderService : IOrderService
         new ProgressDto(
             o.CollectPlace, o.CollectBy, o.CollectAt,
             o.SendVia, o.TrackingNo, o.Shipper, o.SendAt,
-            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt),
+            o.ReceivePlace, o.ReceiveBy, o.ReceiveAt, o.ExpectedResultAt,
+            o.GatherClaimBy, o.GatherClaimAt, o.GatherBy, o.GatherAt),
         o.DepartmentId, o.Department?.Name,
         o.DoctorId, o.Doctor?.FullName,
         o.Department?.HardCopyRequired ?? false);

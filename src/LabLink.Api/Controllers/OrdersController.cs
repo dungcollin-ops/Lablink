@@ -77,6 +77,7 @@ public class OrdersController : AdminControllerBase
 
     private static string? RequiredPermForStage(string stage) => stage switch
     {
+        "GatherClaim" => Permissions.SampleGather,
         "Collected" => Permissions.SampleCollect,
         "Gathered" => Permissions.SampleGather,
         "Received" => Permissions.SampleReceive,

@@ -6,6 +6,7 @@ import { allowedNext, STAGE_ACTION } from "../workflow";
 import SidPrint from "../components/SidPrint";
 import ResultViewer from "../components/ResultViewer";
 import OrderDetailModal from "../components/OrderDetailModal";
+import SampleSteps from "../components/SampleSteps";
 import a from "./admin.module.css";
 import t from "./Track.module.css";
 
@@ -45,15 +46,13 @@ export default function Track({ session }: { session: Session }) {
   const [printOrder, setPrintOrder] = useState<OrderDto | null>(null);
   const [viewResult, setViewResult] = useState<{ id: string; orderNo: string } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [advBy, setAdvBy] = useState("");
   const [advBusy, setAdvBusy] = useState(false);
 
   async function advance(id: string, nextStageKey: string) {
     setAdvBusy(true);
     try {
-      const updated = await setOrderStage(token, id, nextStageKey, nextStageKey === "Collected" ? (advBy.trim() || undefined) : undefined);
+      const updated = await setOrderStage(token, id, nextStageKey);
       setDetail(updated);
-      setAdvBy("");
       reload();
     } catch (e) {
       alert(e instanceof ApiError ? e.message : "Lỗi chuyển bước");
@@ -165,15 +164,21 @@ export default function Track({ session }: { session: Session }) {
                 <div style={{ marginBottom: 12 }}>
                   <button className={a.btn} onClick={() => setDetailId(detail.id)}>📋 Xem đầy đủ / Sửa phiếu</button>
                 </div>
+                {detail.stage === "Ordered" && detail.source === "Doctor" && (
+                  <SampleSteps
+                    token={token}
+                    orderId={detail.id}
+                    progress={detail.progress}
+                    perms={session.permissions}
+                    onDone={() => { getOrder(token, detail.id).then(setDetail).catch(() => {}); reload(); }}
+                  />
+                )}
                 {(() => {
                   const nx = allowedNext(detail.stage, session.permissions);
                   if (!nx) return null;
                   return (
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12, padding: "10px 12px", background: "var(--action-soft)", borderRadius: "var(--radius-control)" }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--action-hover)" }}>Bước kế của bạn:</span>
-                      {nx.stage === "Collected" && (
-                        <input className={a.input} style={{ maxWidth: 200 }} placeholder="Người lấy mẫu (tuỳ chọn)" value={advBy} onChange={(e) => setAdvBy(e.target.value)} />
-                      )}
                       <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginLeft: "auto" }} disabled={advBusy} onClick={() => advance(detail.id, nx.stage)}>
                         {advBusy ? "Đang lưu…" : `✓ ${STAGE_ACTION[nx.stage] ?? nx.stage}`}
                       </button>

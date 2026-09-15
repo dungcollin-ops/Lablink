@@ -5,6 +5,7 @@ import { ApiError } from "../api/http";
 import { allowedNext, STAGE_ACTION } from "../workflow";
 import Modal from "./Modal";
 import ResultViewer from "./ResultViewer";
+import SampleSteps from "./SampleSteps";
 import a from "../pages/admin.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
@@ -89,7 +90,6 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
 }) {
   const [o, setO] = useState<OrderFull>(order);
   const [editing, setEditing] = useState(false);
-  const [by, setBy] = useState("");
   const [advancing, setAdvancing] = useState(false);
   const [pf, setPf] = useState<PForm>(() => toPForm(order));
   const [items, setItems] = useState<EditItem[]>(() => toEditItems(order));
@@ -155,9 +155,9 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
     if (!nx) return;
     setAdvancing(true);
     try {
-      await setOrderStage(token, o.id, nx.stage, nx.stage === "Collected" ? (by.trim() || undefined) : undefined);
+      await setOrderStage(token, o.id, nx.stage);
       const full = await getOrderFull(token, o.id);
-      setO(full); onSaved(full); setBy("");
+      setO(full); onSaved(full);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Lỗi chuyển bước");
     } finally { setAdvancing(false); }
@@ -205,12 +205,21 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
         </div>
       )}
 
+      {!editing && o.stage === "Ordered" && o.source === "Doctor" && (
+        <div style={{ marginTop: 12 }}>
+          <SampleSteps
+            token={token}
+            orderId={o.id}
+            progress={o.progress}
+            perms={perms}
+            onDone={async () => { const full = await getOrderFull(token, o.id); setO(full); onSaved(full); }}
+          />
+        </div>
+      )}
+
       {nx && (
         <div style={{ marginTop: 12, padding: "10px 12px", background: "var(--action-soft)", borderRadius: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--action-hover)", fontWeight: 600 }}>Bước kế của bạn:</span>
-          {nx.stage === "Collected" && (
-            <input className={a.input} style={{ maxWidth: 200 }} placeholder="Người lấy mẫu (tuỳ chọn)" value={by} onChange={(e) => setBy(e.target.value)} />
-          )}
           <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginLeft: "auto" }} disabled={advancing} onClick={advance}>
             {advancing ? "Đang lưu…" : `✓ ${STAGE_ACTION[nx.stage] ?? nx.stage}`}
           </button>

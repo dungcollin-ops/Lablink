@@ -21,6 +21,10 @@ export interface ProgressDto {
   collectPlace?: string | null;
   collectBy?: string | null;
   collectAt?: string | null;
+  gatherClaimBy?: string | null;
+  gatherClaimAt?: string | null;
+  gatherBy?: string | null;
+  gatherAt?: string | null;
   sendVia?: string | null;
   trackingNo?: string | null;
   shipper?: string | null;

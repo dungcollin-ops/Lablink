@@ -16,6 +16,7 @@ import {
 import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
 import SidPrint from "../components/SidPrint";
+import SampleSteps from "../components/SampleSteps";
 import { PERM_FOR_STAGE } from "../workflow";
 import a from "./admin.module.css";
 import t from "./Track.module.css";
@@ -173,6 +174,15 @@ export default function LabOrders({ session }: { session: Session }) {
                     </div>
                   )}
                   <div className={t.blockTitle}>Tiến trình mẫu</div>
+                  {detail.stage === "Ordered" && detail.source === "Doctor" ? (
+                    <SampleSteps
+                      token={token}
+                      orderId={detail.id}
+                      progress={detail.progress}
+                      perms={session.permissions}
+                      onDone={() => { getOrder(token, detail.id).then(setDetail).catch(() => {}); reloadList(); }}
+                    />
+                  ) : (
                   <div className={t.chips} style={{ marginBottom: 14 }}>
                     {(() => {
                       const next = pxnNextStage(detail.stage);
@@ -202,6 +212,7 @@ export default function LabOrders({ session }: { session: Session }) {
                       });
                     })()}
                   </div>
+                  )}
 
                   <div className={t.detailGrid}>
                     <div>

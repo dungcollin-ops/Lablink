@@ -81,7 +81,10 @@ public record ProgressDto(
     string? CollectPlace, string? CollectBy, DateTimeOffset? CollectAt,
     string? SendVia, string? TrackingNo, string? Shipper, DateTimeOffset? SendAt,
     string? ReceivePlace, string? ReceiveBy, DateTimeOffset? ReceiveAt,
-    DateTimeOffset? ExpectedResultAt);
+    DateTimeOffset? ExpectedResultAt,
+    // Giai đoạn đầu song song: Nhận-đi-gom · Đã-lấy (CollectBy/At ở trên) · Đã-gom.
+    string? GatherClaimBy = null, DateTimeOffset? GatherClaimAt = null,
+    string? GatherBy = null, DateTimeOffset? GatherAt = null);
 
 public record SetProgressRequest(
     string? CollectPlace, string? CollectBy, DateTimeOffset? CollectAt,
