@@ -5,13 +5,11 @@ import {
   downloadResult,
   getOrder,
   listOrders,
-  setOrderProgress,
   setOrderStage,
   setSampleQuality,
   uploadResult,
   type OrderDto,
   type OrderListItem,
-  type ProgressDto,
 } from "../api/orders";
 import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
@@ -61,11 +59,8 @@ export default function LabOrders({ session }: { session: Session }) {
   const [detail, setDetail] = useState<OrderDto | null>(null);
   const [printOrder, setPrintOrder] = useState<OrderDto | null>(null);
   const [busy, setBusy] = useState(false);
-  const [prog, setProg] = useState<ProgressDto>({});
   const [assignOpen, setAssignOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { if (detail) setProg(detail.progress ?? {}); }, [detail]);
 
   const reloadList = useCallback(() => {
     setLoading(true);
@@ -111,14 +106,11 @@ export default function LabOrders({ session }: { session: Session }) {
       alert(e instanceof ApiError ? e.message : "Lỗi tải file lên");
     } finally { setBusy(false); }
   }
-  async function saveProgress(orderId: string) {
-    setBusy(true);
-    try {
-      const updated = await setOrderProgress(token, orderId, prog);
-      setDetail(updated);
-    } finally { setBusy(false); }
-  }
-  const setP = (k: keyof ProgressDto, v: string) => setProg((p) => ({ ...p, [k]: v || null }));
+
+  const perms = session.permissions as string[];
+  const canQc = perms.includes("sample.qc");
+  const canUpload = perms.includes("result.upload");
+  const canReadResult = perms.includes("result.read");
 
   return (
     <div>
@@ -216,10 +208,12 @@ export default function LabOrders({ session }: { session: Session }) {
                           <span style={{ fontSize: 12, fontWeight: 600, color: sm.quality === "Pass" ? "var(--success-text)" : sm.quality === "Fail" ? "var(--danger)" : "var(--text-faint)" }}>
                             {QC_LABEL[sm.quality]}
                           </span>
-                          <span style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                            <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => qc(sm.id, "Pass")}>Đạt</button>
-                            <button className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => qc(sm.id, "Fail")}>Không đạt</button>
-                          </span>
+                          {canQc && (
+                            <span style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                              <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => qc(sm.id, "Pass")}>Đạt</button>
+                              <button className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => qc(sm.id, "Fail")}>Không đạt</button>
+                            </span>
+                          )}
                         </div>
                       ))}
                       <button
@@ -232,51 +226,34 @@ export default function LabOrders({ session }: { session: Session }) {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border-2)" }}>
-                    <div className={t.blockTitle}>Kết quả xét nghiệm</div>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="application/pdf,image/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) onUpload(o.id, f);
-                        e.target.value = "";
-                      }}
-                    />
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => fileRef.current?.click()}>
-                        {detail.hasResult ? "Cập nhật kết quả" : "⭱ Tải kết quả lên"}
-                      </button>
-                      {detail.hasResult && (
-                        <button className={a.btn} onClick={() => downloadResult(token, o.id, detail.resultFileName ?? undefined)}>
-                          ⭳ {detail.resultFileName}
-                        </button>
-                      )}
+                  {(canUpload || (detail.hasResult && canReadResult)) && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border-2)" }}>
+                      <div className={t.blockTitle}>Kết quả xét nghiệm</div>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="application/pdf,image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) onUpload(o.id, f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        {canUpload && (
+                          <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => fileRef.current?.click()}>
+                            {detail.hasResult ? "Cập nhật kết quả" : "⭱ Tải kết quả lên"}
+                          </button>
+                        )}
+                        {detail.hasResult && canReadResult && (
+                          <button className={a.btn} onClick={() => downloadResult(token, o.id, detail.resultFileName ?? undefined)}>
+                            ⭳ {detail.resultFileName}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border-2)" }}>
-                    <div className={t.blockTitle}>Tiến trình mẫu chi tiết</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8 }}>
-                      <Field label="Nơi lấy mẫu" v={prog.collectPlace} on={(x) => setP("collectPlace", x)} />
-                      <Field label="Người lấy" v={prog.collectBy} on={(x) => setP("collectBy", x)} />
-                      <Field label="Giờ lấy" type="datetime-local" v={dt(prog.collectAt)} on={(x) => setP("collectAt", x)} />
-                      <FieldSelect label="Hình thức gửi" v={prog.sendVia} on={(x) => setP("sendVia", x)}
-                        opts={[["", "—"], ["Direct", "Trực tiếp"], ["Bus", "Nhà xe"], ["Grab", "Grab"]]} />
-                      <Field label="Mã vận đơn" v={prog.trackingNo} on={(x) => setP("trackingNo", x)} />
-                      <Field label="Shipper" v={prog.shipper} on={(x) => setP("shipper", x)} />
-                      <Field label="Giờ gửi" type="datetime-local" v={dt(prog.sendAt)} on={(x) => setP("sendAt", x)} />
-                      <Field label="Nơi nhận" v={prog.receivePlace} on={(x) => setP("receivePlace", x)} />
-                      <Field label="Người nhận" v={prog.receiveBy} on={(x) => setP("receiveBy", x)} />
-                      <Field label="Giờ nhận" type="datetime-local" v={dt(prog.receiveAt)} on={(x) => setP("receiveAt", x)} />
-                      <Field label="Dự kiến có KQ" type="datetime-local" v={dt(prog.expectedResultAt)} on={(x) => setP("expectedResultAt", x)} />
-                    </div>
-                    <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginTop: 10 }} disabled={busy} onClick={() => saveProgress(o.id)}>
-                      Lưu tiến trình
-                    </button>
-                  </div>
+                  )}
                 </>
               )}
             </div>
@@ -366,24 +343,3 @@ function AssignCollectModal({
   );
 }
 
-const dt = (v?: string | null) => (v ? v.slice(0, 16) : "");
-
-function Field({ label, v, on, type }: { label: string; v?: string | null; on: (x: string) => void; type?: string }) {
-  return (
-    <div className={a.field} style={{ marginBottom: 0 }}>
-      <label className={a.label}>{label}</label>
-      <input className={a.input} type={type ?? "text"} value={v ?? ""} onChange={(e) => on(e.target.value)} />
-    </div>
-  );
-}
-
-function FieldSelect({ label, v, on, opts }: { label: string; v?: string | null; on: (x: string) => void; opts: [string, string][] }) {
-  return (
-    <div className={a.field} style={{ marginBottom: 0 }}>
-      <label className={a.label}>{label}</label>
-      <select className={a.input} value={v ?? ""} onChange={(e) => on(e.target.value)}>
-        {opts.map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
-      </select>
-    </div>
-  );
-}
