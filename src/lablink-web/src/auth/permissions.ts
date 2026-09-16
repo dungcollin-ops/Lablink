@@ -19,7 +19,6 @@ export type Permission =
   | "sid.print"
   | "result.read"
   | "result.upload"
-  | "result.verify"
   | "user.manage"
   | "role.manage"
   | "department.manage"
@@ -53,7 +52,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "deal.read", "deal.approve",
     "order.read", "order.read.all", "sample.collect", "sample.gather", "sample.receive", "sample.qc",
     "hardcopy.deliver",
-    "sid.print", "result.read", "result.upload", "result.verify",
+    "sid.print", "result.read", "result.upload",
   ],
   fastlab_gather: ["order.read", "order.read.all", "sample.gather", "sid.print"],
   fastlab_receive: ["order.read", "order.read.all", "sample.receive", "sample.qc", "result.read", "result.upload"],
@@ -64,7 +63,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "order.read", "order.read.all", "order.create",
     "sample.collect", "sample.send", "sample.gather", "sample.receive", "sample.qc",
     "hardcopy.deliver", "hardcopy.receive",
-    "sid.print", "result.read", "result.upload", "result.verify",
+    "sid.print", "result.read", "result.upload",
     "user.manage", "role.manage", "department.manage", "audit.read", "report.read",
   ],
 };

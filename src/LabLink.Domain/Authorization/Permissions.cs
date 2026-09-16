@@ -23,7 +23,6 @@ public static class Permissions
     public const string SidPrint = "sid.print";
     public const string ResultRead = "result.read";
     public const string ResultUpload = "result.upload";
-    public const string ResultVerify = "result.verify";
     public const string UserManage = "user.manage";
     public const string RoleManage = "role.manage";
     public const string DepartmentManage = "department.manage";
@@ -38,7 +37,7 @@ public static class Permissions
         SampleCollect, SampleSend, SampleGather, SampleReceive, SampleQc,
         HardcopyDeliver, HardcopyReceive,
         SidPrint,
-        ResultRead, ResultUpload, ResultVerify,
+        ResultRead, ResultUpload,
         UserManage, RoleManage, DepartmentManage, AuditRead, ReportRead,
     };
 }
@@ -78,7 +77,7 @@ public static class DefaultRoles
             Permissions.OrderRead, Permissions.OrderReadAll,
             Permissions.SampleCollect, Permissions.SampleGather, Permissions.SampleReceive, Permissions.SampleQc,
             Permissions.HardcopyDeliver,
-            Permissions.SidPrint, Permissions.ResultRead, Permissions.ResultUpload, Permissions.ResultVerify,
+            Permissions.SidPrint, Permissions.ResultRead, Permissions.ResultUpload,
         }),
         // ---- Role nội bộ FastLab (mỗi NV có thể gộp nhiều role) ----
         new("fastlab_gather", "FastLab · Gom mẫu", new[]
