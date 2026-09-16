@@ -32,9 +32,15 @@ $cred = Get-Credential -UserName $User -Message "Mật khẩu Windows trên VPS 
 $s = New-PSSession -ComputerName $VpsHost -Credential $cred -Authentication Negotiate
 
 try {
-  # 4) Dừng service (nếu có) + copy bản mới sang VPS
+  # 4) Dừng service + GIẾT tiến trình cũ (nhả cổng 8080, tránh bind lỗi) + copy bản mới
   Step "4/5  Dừng service + copy bản mới"
-  Invoke-Command -Session $s { Stop-Service LabLink -ErrorAction SilentlyContinue }
+  Invoke-Command -Session $s {
+    Stop-Service LabLink -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    # Stop-Service đôi khi không kết thúc tiến trình → kill để nhả cổng + bỏ khoá file khi giải nén đè.
+    Get-Process LabLink.Api -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 2
+  }
   Copy-Item -Path $zip -Destination "C:\LabLink-deploy.zip" -ToSession $s -Force
 
   # 5) Giải nén đè + tạo service nếu chưa có + khởi động
@@ -63,6 +69,9 @@ try {
     if (-not $exists) {
       New-Service -Name "LabLink" -BinaryPathName "$p\LabLink.Api.exe" -DisplayName "LabLink" -StartupType Automatic | Out-Null
     }
+    # An toàn: đảm bảo không còn tiến trình cũ giữ cổng trước khi start.
+    Get-Process LabLink.Api -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
     Start-Service LabLink
     Start-Sleep -Seconds 2
     [pscustomobject]@{
