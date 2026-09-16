@@ -108,7 +108,10 @@ public record OrderListItemDto(
     DateTimeOffset? ExpectedMinAt = null,
     DateTimeOffset? ExpectedMaxAt = null,
     // Mốc trả KQ thực tế (khi đã có kết quả).
-    DateTimeOffset? ResultAt = null);
+    DateTimeOffset? ResultAt = null,
+    // Cờ lấy/gom mẫu — để hiện nhãn trạng thái đúng ở giai đoạn đầu.
+    DateTimeOffset? CollectedAt = null,
+    DateTimeOffset? GatheredAt = null);
 
 /// <summary>File kết quả để tải về.</summary>
 public record ResultFile(string FileName, string ContentType, byte[] Content);

@@ -68,6 +68,8 @@ export interface OrderListItem {
   expectedMinAt?: string | null;
   expectedMaxAt?: string | null;
   resultAt?: string | null;
+  collectedAt?: string | null;
+  gatheredAt?: string | null;
 }
 export interface PatientSearch {
   id: string;

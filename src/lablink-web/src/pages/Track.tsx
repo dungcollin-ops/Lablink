@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "../auth/session";
 import { getOrder, listOrders, setOrderStage, type OrderDto, type OrderListItem } from "../api/orders";
 import { ApiError } from "../api/http";
-import { allowedNext, STAGE_ACTION } from "../workflow";
+import { allowedNext, STAGE_ACTION, stageLabel } from "../workflow";
 import SidPrint from "../components/SidPrint";
 import ResultViewer from "../components/ResultViewer";
 import OrderDetailModal from "../components/OrderDetailModal";
@@ -28,7 +28,6 @@ const STAGES = [
   { key: "HardCopySent", label: "Đã giao bản cứng" },
   { key: "HardCopyReceived", label: "Đã nhận bản cứng" },
 ];
-const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
 const STAGE_CLS: Record<string, string> = {
   Ordered: t.stageOrdered, Collected: t.stageCollected, Gathered: t.stageSent,
   Received: t.stageReceived, Resulted: t.stageResulted,
@@ -120,7 +119,7 @@ export default function Track({ session }: { session: Session }) {
             <span className={`${t.badge} ${o.source === "Doctor" ? t.srcDoctor : t.srcRetail}`}>
               {o.source === "Doctor" ? "Bác sĩ" : "Khách lẻ"}
             </span>
-            <span className={`${t.badge} ${STAGE_CLS[o.stage] ?? ""}`}>{STAGE_LABEL[o.stage] ?? o.stage}</span>
+            <span className={`${t.badge} ${STAGE_CLS[o.stage] ?? ""}`}>{stageLabel(o.stage, { collectAt: o.collectedAt, gatherAt: o.gatheredAt })}</span>
             <span className={t.patient}>
               {o.patientName} <span className={t.maBN}>{o.patientMaBN}</span>
             </span>

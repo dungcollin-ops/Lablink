@@ -15,6 +15,14 @@ export const STAGE_LABEL: Record<string, string> = {
   HardCopyReceived: "Đã nhận bản cứng",
 };
 
+/** Nhãn trạng thái ĐỘNG theo tiến độ lấy/gom ở giai đoạn đầu (badge phải khớp thực tế).
+ * Ordered: chưa lấy → "Chờ lấy/gom mẫu"; đã lấy (chưa gom) → "Đã lấy mẫu". */
+export function stageLabel(stage: string, p?: { collectAt?: string | null; gatherAt?: string | null }): string {
+  if (stage === "Ordered") return p?.collectAt ? "Đã lấy mẫu" : "Chờ lấy/gom mẫu";
+  if (stage === "Collected") return "Đã lấy mẫu"; // khách lẻ đã lấy, chờ gom
+  return STAGE_LABEL[stage] ?? stage;
+}
+
 /** Nhãn hành động (nút) để chuyển VÀO một trạng thái (dùng cho bước tuyến tính từ Gathered trở đi). */
 export const STAGE_ACTION: Record<string, string> = {
   Received: "Nhận mẫu",

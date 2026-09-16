@@ -175,6 +175,7 @@ public partial class OrderService : IOrderService
                 ResultAt = o.Result != null ? (DateTimeOffset?)o.Result.UploadedAt : null,
                 DeptName = o.Department != null ? o.Department.Name : null,
                 o.ReceiveAt, o.EtaMinHours, o.EtaMaxHours,
+                o.CollectAt, o.GatherAt,
             })
             .ToListAsync(ct);
 
@@ -187,7 +188,8 @@ public partial class OrderService : IOrderService
             return new OrderListItemDto(
                 o.Id, o.OrderNo, o.Source.ToString(), o.Stage.ToString(),
                 o.PatientName, o.PatientMaBN, o.ItemCount, o.Total, o.CreatedAt,
-                o.HasResult, o.DeptName, minAt, maxAt, o.ResultAt);
+                o.HasResult, o.DeptName, minAt, maxAt, o.ResultAt,
+                o.CollectAt, o.GatherAt);
         }).ToList();
     }
 

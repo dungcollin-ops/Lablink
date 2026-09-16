@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { getOrderFull, updateOrder, setOrderStage, type OrderFull } from "../api/orders";
 import { fetchCatalog, type CatalogItem } from "../api/catalog";
 import { ApiError } from "../api/http";
-import { allowedNext, STAGE_ACTION } from "../workflow";
+import { allowedNext, STAGE_ACTION, stageLabel } from "../workflow";
 import Modal from "./Modal";
 import ResultViewer from "./ResultViewer";
 import SampleSteps from "./SampleSteps";
@@ -193,7 +193,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
         <span style={{ padding: "2px 9px", borderRadius: 999, background: "var(--action-soft)", color: "var(--action-hover)", fontWeight: 600, fontSize: 12 }}>
-          {STAGE_LABEL[o.stage] ?? o.stage}
+          {stageLabel(o.stage, { collectAt: o.progress.collectAt, gatherAt: o.progress.gatherAt })}
         </span>
         <span style={{ color: "var(--text-muted)" }}>{o.source === "Doctor" ? "Bác sĩ" : "Khách lẻ"}</span>
         <span style={{ color: "var(--text-faint)" }}>Tạo: {new Date(o.createdAt).toLocaleString("vi-VN")}</span>

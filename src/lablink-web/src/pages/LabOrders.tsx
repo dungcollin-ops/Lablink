@@ -15,7 +15,7 @@ import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
 import SidPrint from "../components/SidPrint";
 import SampleSteps from "../components/SampleSteps";
-import { PERM_FOR_STAGE } from "../workflow";
+import { PERM_FOR_STAGE, stageLabel } from "../workflow";
 import a from "./admin.module.css";
 import t from "./Track.module.css";
 
@@ -30,7 +30,6 @@ const STAGES = [
   { key: "HardCopySent", label: "Đã giao bản cứng" },
   { key: "HardCopyReceived", label: "Đã nhận bản cứng" },
 ];
-const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
 const STAGE_CLS: Record<string, string> = {
   Ordered: t.stageOrdered, Collected: t.stageCollected, Gathered: t.stageSent,
   Received: t.stageReceived, Resulted: t.stageResulted,
@@ -145,7 +144,7 @@ export default function LabOrders({ session }: { session: Session }) {
             <span className={`${t.badge} ${o.source === "Doctor" ? t.srcDoctor : t.srcRetail}`}>
               {o.source === "Doctor" ? "Bác sĩ" : "Khách lẻ"}
             </span>
-            <span className={`${t.badge} ${STAGE_CLS[o.stage] ?? ""}`}>{STAGE_LABEL[o.stage] ?? o.stage}</span>
+            <span className={`${t.badge} ${STAGE_CLS[o.stage] ?? ""}`}>{stageLabel(o.stage, { collectAt: o.collectedAt, gatherAt: o.gatheredAt })}</span>
             <span className={t.patient}>{o.patientName} <span className={t.maBN}>{o.patientMaBN}</span></span>
             <span className={t.total}>{vnd.format(o.total)} ₫</span>
           </div>
@@ -176,7 +175,7 @@ export default function LabOrders({ session }: { session: Session }) {
                     />
                   ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                    <span className={`${t.badge} ${STAGE_CLS[detail.stage] ?? ""}`}>{STAGE_LABEL[detail.stage] ?? detail.stage}</span>
+                    <span className={`${t.badge} ${STAGE_CLS[detail.stage] ?? ""}`}>{stageLabel(detail.stage, { collectAt: detail.progress.collectAt, gatherAt: detail.progress.gatherAt })}</span>
                     {(() => {
                       const next = pxnNextStage(detail.stage);
                       if (!next) return <span style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{detail.stage === "Received" ? "→ chờ tải kết quả lên" : "—"}</span>;
