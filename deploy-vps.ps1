@@ -26,9 +26,11 @@ $zip = "$root\publish.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path "$root\publish\*" -DestinationPath $zip
 
-# 3) Kết nối VPS
-Step "3/5  Kết nối VPS $VpsHost (nhập mật khẩu Windows của VPS)"
-$cred = Get-Credential -UserName $User -Message "Mật khẩu Windows trên VPS ($VpsHost)"
+# 3) Kết nối VPS — dùng Read-Host thay Get-Credential (Get-Credential prompt kiểu console
+#    dễ nhập lệch mật khẩu → Access denied). Read-Host + PSCredential ổn định hơn.
+Step "3/5  Kết nối VPS $VpsHost"
+$sec = Read-Host "Mat khau Windows tren VPS ($VpsHost) cho tai khoan $User" -AsSecureString
+$cred = New-Object System.Management.Automation.PSCredential($User, $sec)
 $s = New-PSSession -ComputerName $VpsHost -Credential $cred -Authentication Negotiate
 
 try {
