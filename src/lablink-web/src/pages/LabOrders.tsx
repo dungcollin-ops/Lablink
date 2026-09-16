@@ -183,33 +183,16 @@ export default function LabOrders({ session }: { session: Session }) {
                       onDone={() => { getOrder(token, detail.id).then(setDetail).catch(() => {}); reloadList(); }}
                     />
                   ) : (
-                  <div className={t.chips} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <span className={`${t.badge} ${STAGE_CLS[detail.stage] ?? ""}`}>{STAGE_LABEL[detail.stage] ?? detail.stage}</span>
                     {(() => {
                       const next = pxnNextStage(detail.stage);
-                      const canNext = next != null && (session.permissions as string[]).includes(PERM_FOR_STAGE[next] ?? "");
-                      const curIdx = STAGE_ORDER.indexOf(detail.stage);
-                      return STAGES.map((sg) => {
-                        const isCurrent = detail.stage === sg.key;
-                        const isNext = sg.key === next && canNext;
-                        const passed = STAGE_ORDER.indexOf(sg.key) < curIdx;
-                        return (
-                          <button
-                            key={sg.key}
-                            disabled={busy || !isNext}
-                            title={
-                              isNext ? "Bấm để chuyển sang bước này"
-                                : (sg.key === next && !canNext) ? "Bạn không có quyền cho bước này"
-                                  : isCurrent ? "Trạng thái hiện tại"
-                                    : passed ? "Bước đã đi qua — không quay lại"
-                                      : "Chưa tới bước này"
-                            }
-                            className={`${t.chip} ${isCurrent ? t.chipActive : ""} ${isNext ? t.chipNext : ""}`}
-                            onClick={() => isNext && changeStage(o.id, sg.key)}
-                          >
-                            {passed ? "🔒 " : ""}{sg.label}
-                          </button>
-                        );
-                      });
+                      if (!next) return <span style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{detail.stage === "Received" ? "→ chờ tải kết quả lên" : "—"}</span>;
+                      const label = STAGES.find((s) => s.key === next)?.label ?? next;
+                      const canNext = (session.permissions as string[]).includes(PERM_FOR_STAGE[next] ?? "");
+                      return canNext
+                        ? <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => changeStage(o.id, next)}>✓ {label}</button>
+                        : <span style={{ fontSize: 12.5, color: "var(--text-faint)" }}>Bước kế: {label} (bạn không có quyền)</span>;
                     })()}
                   </div>
                   )}

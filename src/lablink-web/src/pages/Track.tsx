@@ -145,12 +145,9 @@ export default function Track({ session }: { session: Session }) {
                 <div>Chỉ định: <b style={{ color: "var(--text-body)" }}>{fmtDT(o.createdAt)}</b></div>
                 {o.resultAt ? (
                   <div>Đã trả KQ: <b style={{ color: "var(--success-text)" }}>{fmtDT(o.resultAt)}</b></div>
-                ) : (
-                  <>
-                    <div>Dự kiến KQ min: <b style={{ color: "var(--action-hover)" }}>{fmtDT(o.expectedMinAt)}</b></div>
-                    <div>Dự kiến KQ max: <b style={{ color: "var(--action-hover)" }}>{fmtDT(o.expectedMaxAt)}</b></div>
-                  </>
-                )}
+                ) : (o.expectedMinAt || o.expectedMaxAt) ? (
+                  <div>Dự kiến KQ: <b style={{ color: "var(--action-hover)" }}>{fmtDT(o.expectedMinAt)} – {fmtDT(o.expectedMaxAt)}</b></div>
+                ) : null}
               </div>
             </div>
             <span className={t.total}>{vnd.format(o.total)} ₫</span>
