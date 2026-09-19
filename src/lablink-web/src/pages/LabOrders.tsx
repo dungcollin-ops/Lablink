@@ -15,12 +15,23 @@ import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
 import SidPrint from "../components/SidPrint";
 import SampleSteps from "../components/SampleSteps";
-import { PERM_FOR_STAGE, stageLabel } from "../workflow";
+import {
+  PERM_FOR_STAGE, stageLabel,
+  LIST_STAGES, LIST_QUICK, matchStage, matchQuick, isOverdue, type QuickFilter,
+  hasMyWorkRole, isMyWork, orderCompare, SORT_OPTIONS, type SortMode,
+} from "../workflow";
 import a from "./admin.module.css";
 import t from "./Track.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
+const fmtDT = (s?: string | null) => {
+  if (!s) return "—";
+  const d = new Date(s);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
+// Thứ tự bước tuyến tính ở PXN (dùng cho pxnNextStage + tra nhãn nút bước kế).
 const STAGES = [
   { key: "Ordered", label: "Chờ lấy mẫu" },
   { key: "Collected", label: "Đã lấy mẫu" },
@@ -50,8 +61,12 @@ function pxnNextStage(current: string): string | null {
 
 export default function LabOrders({ session }: { session: Session }) {
   const token = session.token;
+  const perms = session.permissions as string[];
+  const myRole = hasMyWorkRole(perms);
   const [query, setQuery] = useState("");
-  const [stage, setStage] = useState("");
+  const [stage, setStage] = useState(myRole ? "MINE" : "");
+  const [quick, setQuick] = useState<QuickFilter>("");
+  const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -63,10 +78,11 @@ export default function LabOrders({ session }: { session: Session }) {
 
   const reloadList = useCallback(() => {
     setLoading(true);
-    listOrders(token, query || undefined, stage || undefined)
+    // Lọc trạng thái / lọc nhanh / sắp xếp làm phía client (chip gộp + đếm quá hạn).
+    listOrders(token, query || undefined)
       .then(setOrders)
       .finally(() => setLoading(false));
-  }, [token, query, stage]);
+  }, [token, query]);
 
   useEffect(() => {
     const h = setTimeout(reloadList, 200);
@@ -106,15 +122,28 @@ export default function LabOrders({ session }: { session: Session }) {
     } finally { setBusy(false); }
   }
 
-  const perms = session.permissions as string[];
   const canQc = perms.includes("sample.qc");
   const canUpload = perms.includes("result.upload");
   const canReadResult = perms.includes("result.read");
 
+  const now = Date.now();
+  const overdueCount = orders.filter((o) => isOverdue(o, now)).length;
+  const myCount = myRole ? orders.filter((o) => isMyWork(perms, o)).length : 0;
+  const shown = orders
+    .filter((o) => (stage === "MINE" ? isMyWork(perms, o) : matchStage(stage, o)) && matchQuick(quick, o, now))
+    .sort(orderCompare(sortMode));
+
   return (
     <div>
-      <div className={a.head}>
+      <div className={a.head} style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
         <div className={a.h1}>Chỉ định &amp; trả kết quả</div>
+        {!loading && <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{shown.length} phiếu</span>}
+        <label style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-muted)" }}>
+          Sắp theo
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ fontSize: 12.5, padding: "3px 6px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text-body)" }}>
+            {SORT_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </label>
       </div>
 
       <div className={t.filters}>
@@ -125,27 +154,67 @@ export default function LabOrders({ session }: { session: Session }) {
           onChange={(e) => setQuery(e.target.value)}
         />
         <div className={t.chips}>
-          <button className={`${t.chip} ${stage === "" ? t.chipActive : ""}`} onClick={() => setStage("")}>Tất cả</button>
-          {STAGES.map((sg) => (
+          {myRole && (
+            <button
+              className={`${t.chip} ${stage === "MINE" ? t.chipActive : ""}`}
+              onClick={() => setStage("MINE")}
+              title="Phiếu đang chờ đúng việc của bạn"
+            >
+              🎯 Việc của tôi{myCount > 0 ? ` ${myCount}` : ""}
+            </button>
+          )}
+          {LIST_STAGES.map((sg) => (
             <button key={sg.key} className={`${t.chip} ${stage === sg.key ? t.chipActive : ""}`} onClick={() => setStage(sg.key)}>
               {sg.label}
             </button>
           ))}
         </div>
+        <div className={t.chips} style={{ marginTop: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted)", marginRight: 2 }}>Lọc nhanh:</span>
+          {LIST_QUICK.map((q) => {
+            const on = quick === q.key;
+            const danger = q.key === "overdue" && overdueCount > 0;
+            return (
+              <button
+                key={q.key}
+                className={`${t.chip} ${on ? t.chipActive : ""}`}
+                onClick={() => setQuick(on ? "" : q.key)}
+                style={!on && danger ? { background: "var(--danger-bg)", borderColor: "var(--danger-border)", color: "var(--danger)" } : undefined}
+              >
+                {q.key === "overdue" ? "⚠️ " : ""}{q.label}{danger ? ` ${overdueCount}` : ""}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {loading && <div className={t.state}>Đang tải…</div>}
       {!loading && orders.length === 0 && <div className={t.state}>Chưa có phiếu nào.</div>}
+      {!loading && orders.length > 0 && shown.length === 0 && <div className={t.state}>Không có phiếu khớp bộ lọc.</div>}
 
-      {orders.map((o) => (
-        <div key={o.id} className={t.card}>
-          <div className={t.cardHead} onClick={() => open(o.id)}>
+      {shown.map((o) => {
+        const ovd = isOverdue(o, now);
+        return (
+        <div key={o.id} className={t.card} style={ovd ? { background: "var(--danger-bg)", borderColor: "var(--danger-border)" } : undefined}>
+          <div className={t.cardHead} onClick={() => open(o.id)} style={ovd ? { background: "var(--danger-bg)" } : undefined}>
             <span className={t.orderNo}>{o.orderNo}</span>
             <span className={`${t.badge} ${o.source === "Doctor" ? t.srcDoctor : t.srcRetail}`}>
               {o.source === "Doctor" ? "Bác sĩ" : "Khách lẻ"}
             </span>
             <span className={`${t.badge} ${STAGE_CLS[o.stage] ?? ""}`}>{stageLabel(o.stage, { collectAt: o.collectedAt, gatherAt: o.gatheredAt })}</span>
-            <span className={t.patient}>{o.patientName} <span className={t.maBN}>{o.patientMaBN}</span></span>
+            <span className={t.patient}>
+              {ovd && <span title="Quá hạn dự kiến KQ" style={{ marginRight: 4 }}>⚠️</span>}
+              {o.patientName} <span className={t.maBN}>{o.patientMaBN} · {o.itemCount} XN</span>
+            </span>
+            <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 11.5, lineHeight: 1.35, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+              {o.resultAt ? (
+                <>Đã trả KQ<br /><b style={{ color: "var(--success-text)" }}>{fmtDT(o.resultAt)}</b></>
+              ) : (o.expectedMinAt || o.expectedMaxAt) ? (
+                <>Dự kiến KQ<br /><b style={{ color: ovd ? "var(--danger)" : "var(--action-hover)" }}>{fmtDT(o.expectedMinAt)} – {fmtDT(o.expectedMaxAt)}</b></>
+              ) : (
+                <>Chỉ định<br /><b style={{ color: "var(--text-body)" }}>{fmtDT(o.createdAt)}</b></>
+              )}
+            </div>
             <span className={t.total}>{vnd.format(o.total)} ₫</span>
           </div>
 
@@ -258,7 +327,8 @@ export default function LabOrders({ session }: { session: Session }) {
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {printOrder && <SidPrint order={printOrder} onClose={() => setPrintOrder(null)} />}
 

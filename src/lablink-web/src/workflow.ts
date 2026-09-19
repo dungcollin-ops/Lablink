@@ -82,6 +82,113 @@ export function visibleFlow(hardCopyRequired: boolean): string[] {
   return hardCopyRequired ? [...STAGE_FLOW] : STAGE_FLOW.filter((s) => !HARDCOPY_STAGES.includes(s));
 }
 
+// ---- Danh sách phiếu: lọc / lọc nhanh / sắp xếp / tô đỏ quá hạn (dùng chung Track + LabOrders) ----
+export interface OrderRowLike {
+  stage: string;
+  createdAt: string;
+  resultAt?: string | null;
+  expectedMaxAt?: string | null;
+}
+
+/** Phiếu quá hạn: chưa trả KQ và đã trôi qua mốc dự kiến KQ tối đa. */
+export function isOverdue(o: OrderRowLike, now = Date.now()): boolean {
+  return !o.resultAt && !!o.expectedMaxAt && new Date(o.expectedMaxAt).getTime() < now;
+}
+
+/** Chip trạng thái rút gọn cho danh sách (khớp model gom mẫu song song). */
+export const LIST_STAGES: { key: string; label: string }[] = [
+  { key: "", label: "Tất cả" },
+  { key: "Ordered", label: "Chờ lấy/gom" },
+  { key: "Gathered", label: "Đã gom" },
+  { key: "Received", label: "Đã nhận" },
+  { key: "Resulted", label: "Có KQ" },
+];
+
+/** Các quyền hành động — người có 1 trong số này thì có "hàng đợi việc của mình". */
+export const MY_WORK_PERMS = [
+  "sample.collect", "sample.gather", "sample.receive",
+  "result.upload", "hardcopy.deliver", "hardcopy.receive",
+];
+export function hasMyWorkRole(perms: string[]): boolean {
+  return MY_WORK_PERMS.some((p) => perms.includes(p));
+}
+
+/** Phiếu có đang chờ ĐÚNG việc của role đang đăng nhập không (theo quyền → stage tương ứng). */
+export function isMyWork(
+  perms: string[],
+  o: { stage: string; collectedAt?: string | null; gatheredAt?: string | null },
+): boolean {
+  if (perms.includes("sample.collect") && o.stage === "Ordered" && !o.collectedAt) return true; // điều dưỡng: chưa lấy
+  if (perms.includes("sample.gather") && o.stage === "Ordered" && !o.gatheredAt) return true;    // NV gom: chưa gom xong
+  if (perms.includes("sample.receive") && o.stage === "Gathered") return true;                    // NV nhận: đã gom, chờ nhận
+  if (perms.includes("result.upload") && o.stage === "Received") return true;                      // KTV: đã nhận, chờ trả KQ
+  if (perms.includes("hardcopy.deliver") && o.stage === "Resulted") return true;                   // giao bản cứng
+  if (perms.includes("hardcopy.receive") && o.stage === "HardCopySent") return true;               // nhận bản cứng
+  return false;
+}
+
+/** Chip lọc trạng thái khớp phiếu (gộp Ordered+Collected và cả hai bước bản cứng).
+ * "Có KQ" lấy MỌI phiếu đã có kết quả (kể cả đã sang bước bản cứng), dựa vào resultAt. */
+export function matchStage(stageFilter: string, o: { stage: string; resultAt?: string | null }): boolean {
+  if (!stageFilter) return true;
+  if (stageFilter === "Ordered") return o.stage === "Ordered" || o.stage === "Collected";
+  if (stageFilter === "HardCopy") return o.stage === "HardCopySent" || o.stage === "HardCopyReceived";
+  if (stageFilter === "Resulted") return !!o.resultAt;
+  return o.stage === stageFilter;
+}
+
+export type QuickFilter = "" | "today" | "noresult" | "overdue";
+export const LIST_QUICK: { key: Exclude<QuickFilter, "">; label: string }[] = [
+  { key: "today", label: "Hôm nay" },
+  { key: "noresult", label: "Chưa trả KQ" },
+  { key: "overdue", label: "Quá hạn" },
+];
+
+export function matchQuick(q: QuickFilter, o: OrderRowLike, now = Date.now()): boolean {
+  if (!q) return true;
+  if (q === "today") {
+    const d = new Date(o.createdAt);
+    const n = new Date(now);
+    return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  }
+  if (q === "noresult") return !o.resultAt;
+  if (q === "overdue") return isOverdue(o, now);
+  return true;
+}
+
+/** Sắp xếp theo ETA: quá hạn / gần hạn lên đầu, phiếu đã có KQ xuống cuối (KQ mới nhất trước). */
+export function etaCompare(a: OrderRowLike, b: OrderRowLike): number {
+  const rank = (o: OrderRowLike): [number, number] => {
+    if (!o.resultAt) {
+      const t = o.expectedMaxAt ? new Date(o.expectedMaxAt).getTime() : Number.POSITIVE_INFINITY;
+      return [0, t];
+    }
+    return [1, -new Date(o.resultAt).getTime()];
+  };
+  const [ga, ta] = rank(a);
+  const [gb, tb] = rank(b);
+  return ga !== gb ? ga - gb : ta - tb;
+}
+
+// ---- Kiểu sắp xếp danh sách (người dùng tự chọn) ----
+export type SortMode = "eta" | "orderNo" | "newest";
+export const SORT_OPTIONS: { key: SortMode; label: string }[] = [
+  { key: "eta", label: "Dự kiến KQ" },
+  { key: "orderNo", label: "Mã phiếu" },
+  { key: "newest", label: "Mới nhất" },
+];
+type SortRow = OrderRowLike & { orderNo: string };
+const orderNoNum = (s: string): number => {
+  const m = /(\d+)/.exec(s || "");
+  return m ? parseInt(m[1], 10) : 0;
+};
+/** Trả comparator theo kiểu sort đang chọn (dùng với Array.sort). */
+export function orderCompare(mode: SortMode): (a: SortRow, b: SortRow) => number {
+  if (mode === "orderNo") return (a, b) => orderNoNum(a.orderNo) - orderNoNum(b.orderNo);
+  if (mode === "newest") return (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  return etaCompare;
+}
+
 /** Bước kế tuyến tính mà user (theo perms) được phép bấm; null nếu không (Ordered luôn null → dùng sampleSteps). */
 export function allowedNext(
   stage: string,

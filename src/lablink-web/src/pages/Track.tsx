@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "../auth/session";
 import { getOrder, listOrders, setOrderStage, type OrderDto, type OrderListItem } from "../api/orders";
 import { ApiError } from "../api/http";
-import { allowedNext, STAGE_ACTION, stageLabel } from "../workflow";
+import {
+  allowedNext, STAGE_ACTION, stageLabel,
+  LIST_STAGES, LIST_QUICK, matchStage, matchQuick, isOverdue, type QuickFilter,
+  hasMyWorkRole, isMyWork, orderCompare, SORT_OPTIONS, type SortMode,
+} from "../workflow";
 import SidPrint from "../components/SidPrint";
 import ResultViewer from "../components/ResultViewer";
 import OrderDetailModal from "../components/OrderDetailModal";
@@ -18,16 +22,6 @@ const fmtDT = (s?: string | null) => {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-const STAGES = [
-  { key: "", label: "Tất cả" },
-  { key: "Ordered", label: "Chờ lấy mẫu" },
-  { key: "Collected", label: "Đã lấy mẫu" },
-  { key: "Gathered", label: "Đã gom mẫu" },
-  { key: "Received", label: "Đã nhận mẫu" },
-  { key: "Resulted", label: "Có kết quả" },
-  { key: "HardCopySent", label: "Đã giao bản cứng" },
-  { key: "HardCopyReceived", label: "Đã nhận bản cứng" },
-];
 const STAGE_CLS: Record<string, string> = {
   Ordered: t.stageOrdered, Collected: t.stageCollected, Gathered: t.stageSent,
   Received: t.stageReceived, Resulted: t.stageResulted,
@@ -36,8 +30,12 @@ const STAGE_CLS: Record<string, string> = {
 
 export default function Track({ session }: { session: Session }) {
   const token = session.token;
+  const perms = session.permissions as string[];
+  const myRole = hasMyWorkRole(perms);
   const [query, setQuery] = useState("");
-  const [stage, setStage] = useState("");
+  const [stage, setStage] = useState(myRole ? "MINE" : "");
+  const [quick, setQuick] = useState<QuickFilter>("");
+  const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -62,10 +60,11 @@ export default function Track({ session }: { session: Session }) {
 
   const reload = useCallback(() => {
     setLoading(true);
-    listOrders(token, query || undefined, stage || undefined)
+    // Lọc trạng thái / lọc nhanh / sắp xếp làm phía client để hỗ trợ chip gộp + đếm quá hạn.
+    listOrders(token, query || undefined)
       .then(setOrders)
       .finally(() => setLoading(false));
-  }, [token, query, stage]);
+  }, [token, query]);
 
   useEffect(() => {
     const h = setTimeout(reload, 200);
@@ -83,10 +82,24 @@ export default function Track({ session }: { session: Session }) {
     getOrder(token, id).then(setDetail).catch(() => {});
   }
 
+  const now = Date.now();
+  const overdueCount = orders.filter((o) => isOverdue(o, now)).length;
+  const myCount = myRole ? orders.filter((o) => isMyWork(perms, o)).length : 0;
+  const shown = orders
+    .filter((o) => (stage === "MINE" ? isMyWork(perms, o) : matchStage(stage, o)) && matchQuick(quick, o, now))
+    .sort(orderCompare(sortMode));
+
   return (
     <div>
-      <div className={a.head}>
+      <div className={a.head} style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
         <div className={a.h1}>Theo dõi &amp; kết quả</div>
+        {!loading && <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{shown.length} phiếu</span>}
+        <label style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-muted)" }}>
+          Sắp theo
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ fontSize: 12.5, padding: "3px 6px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text-body)" }}>
+            {SORT_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </label>
       </div>
 
       <div className={t.filters}>
@@ -97,7 +110,16 @@ export default function Track({ session }: { session: Session }) {
           onChange={(e) => setQuery(e.target.value)}
         />
         <div className={t.chips}>
-          {STAGES.map((sg) => (
+          {myRole && (
+            <button
+              className={`${t.chip} ${stage === "MINE" ? t.chipActive : ""}`}
+              onClick={() => setStage("MINE")}
+              title="Phiếu đang chờ đúng việc của bạn"
+            >
+              🎯 Việc của tôi{myCount > 0 ? ` ${myCount}` : ""}
+            </button>
+          )}
+          {LIST_STAGES.map((sg) => (
             <button
               key={sg.key}
               className={`${t.chip} ${stage === sg.key ? t.chipActive : ""}`}
@@ -107,23 +129,44 @@ export default function Track({ session }: { session: Session }) {
             </button>
           ))}
         </div>
+        <div className={t.chips} style={{ marginTop: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted)", marginRight: 2 }}>Lọc nhanh:</span>
+          {LIST_QUICK.map((q) => {
+            const on = quick === q.key;
+            const danger = q.key === "overdue" && overdueCount > 0;
+            return (
+              <button
+                key={q.key}
+                className={`${t.chip} ${on ? t.chipActive : ""}`}
+                onClick={() => setQuick(on ? "" : q.key)}
+                style={!on && danger ? { background: "var(--danger-bg)", borderColor: "var(--danger-border)", color: "var(--danger)" } : undefined}
+              >
+                {q.key === "overdue" ? "⚠️ " : ""}{q.label}{danger ? ` ${overdueCount}` : ""}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {loading && <div className={t.state}>Đang tải…</div>}
       {!loading && orders.length === 0 && <div className={t.state}>Chưa có phiếu nào.</div>}
+      {!loading && orders.length > 0 && shown.length === 0 && <div className={t.state}>Không có phiếu khớp bộ lọc.</div>}
 
-      {orders.map((o) => (
-        <div key={o.id} className={t.card}>
-          <div className={t.cardHead} onClick={() => toggle(o.id)}>
+      {shown.map((o) => {
+        const ovd = isOverdue(o, now);
+        return (
+        <div key={o.id} className={t.card} style={ovd ? { background: "var(--danger-bg)", borderColor: "var(--danger-border)" } : undefined}>
+          <div className={t.cardHead} onClick={() => toggle(o.id)} style={ovd ? { background: "var(--danger-bg)" } : undefined}>
             <span className={t.orderNo}>{o.orderNo}</span>
             <span className={`${t.badge} ${o.source === "Doctor" ? t.srcDoctor : t.srcRetail}`}>
               {o.source === "Doctor" ? "Bác sĩ" : "Khách lẻ"}
             </span>
             <span className={`${t.badge} ${STAGE_CLS[o.stage] ?? ""}`}>{stageLabel(o.stage, { collectAt: o.collectedAt, gatherAt: o.gatheredAt })}</span>
             <span className={t.patient}>
-              {o.patientName} <span className={t.maBN}>{o.patientMaBN}</span>
+              {ovd && <span title="Quá hạn dự kiến KQ" style={{ marginRight: 4 }}>⚠️</span>}
+              {o.patientName} <span className={t.maBN}>{o.patientMaBN} · {o.itemCount} XN</span>
             </span>
-            {/* Cụm phải: nút Kết quả (nếu có) → mốc thời gian → thành tiền, luôn cùng vị trí giữa các dòng. */}
+            {/* Cụm phải: nút Kết quả (nếu có) → 1 mốc thời gian quan trọng → thành tiền. */}
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
               {o.hasResult && (
                 <button
@@ -140,13 +183,14 @@ export default function Track({ session }: { session: Session }) {
                   👁 Kết quả
                 </button>
               )}
-              <div style={{ textAlign: "right", fontSize: 11.5, lineHeight: 1.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                <div>Chỉ định: <b style={{ color: "var(--text-body)" }}>{fmtDT(o.createdAt)}</b></div>
+              <div style={{ textAlign: "right", fontSize: 11.5, lineHeight: 1.35, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                 {o.resultAt ? (
-                  <div>Đã trả KQ: <b style={{ color: "var(--success-text)" }}>{fmtDT(o.resultAt)}</b></div>
+                  <>Đã trả KQ<br /><b style={{ color: "var(--success-text)" }}>{fmtDT(o.resultAt)}</b></>
                 ) : (o.expectedMinAt || o.expectedMaxAt) ? (
-                  <div>Dự kiến KQ: <b style={{ color: "var(--action-hover)" }}>{fmtDT(o.expectedMinAt)} – {fmtDT(o.expectedMaxAt)}</b></div>
-                ) : null}
+                  <>Dự kiến KQ<br /><b style={{ color: ovd ? "var(--danger)" : "var(--action-hover)" }}>{fmtDT(o.expectedMinAt)} – {fmtDT(o.expectedMaxAt)}</b></>
+                ) : (
+                  <>Chỉ định<br /><b style={{ color: "var(--text-body)" }}>{fmtDT(o.createdAt)}</b></>
+                )}
               </div>
             </div>
             <span className={t.total}>{vnd.format(o.total)} ₫</span>
@@ -238,7 +282,8 @@ export default function Track({ session }: { session: Session }) {
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {printOrder && <SidPrint order={printOrder} onClose={() => setPrintOrder(null)} />}
 

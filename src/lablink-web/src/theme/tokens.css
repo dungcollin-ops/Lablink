@@ -46,8 +46,11 @@
   --danger: #c23b3b;        /* đỏ — lỗi / từ chối */
   --danger-2: #e0574f;
   --danger-soft: #fff6f5;
+  --danger-bg: #fdeaea;     /* nền dòng quá hạn (đậm hơn soft) */
+  --danger-border: #f1c4c4; /* viền dòng quá hạn */
 
   --warning-text: #a5691a;  /* vàng — chờ xử lý */
+  --warning-soft: #fdf3e3;
 
   /* ---- Typography ---- */
   --font-sans: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI",
