@@ -123,6 +123,7 @@ export default function LabOrders({ session }: { session: Session }) {
   }
 
   const canQc = perms.includes("sample.qc");
+  const canPrintSid = perms.includes("sid.print"); // chỉ người lấy mẫu / KTV nhận mẫu mới thấy In SID
   const canUpload = perms.includes("result.upload");
   const canReadResult = perms.includes("result.read");
 
@@ -284,13 +285,15 @@ export default function LabOrders({ session }: { session: Session }) {
                           )}
                         </div>
                       ))}
-                      <button
-                        className={a.btn}
-                        style={{ marginTop: 10, borderColor: "var(--sid-border)", color: "var(--sid)" }}
-                        onClick={() => setPrintOrder(detail)}
-                      >
-                        ⎙ In SID
-                      </button>
+                      {canPrintSid && (
+                        <button
+                          className={a.btn}
+                          style={{ marginTop: 10, borderColor: "var(--sid-border)", color: "var(--sid)" }}
+                          onClick={() => setPrintOrder(detail)}
+                        >
+                          ⎙ In SID
+                        </button>
+                      )}
                     </div>
                   </div>
 

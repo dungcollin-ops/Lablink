@@ -83,12 +83,13 @@ public static class DefaultRoles
         new("fastlab_gather", "FastLab · Gom mẫu", new[]
         {
             Permissions.OrderRead, Permissions.OrderReadAll,
-            Permissions.SampleGather, Permissions.SidPrint,
+            Permissions.SampleGather,   // gom mẫu là khâu vận chuyển — KHÔNG in SID (in ở lúc lấy mẫu & KTV nhận mẫu)
         }),
         new("fastlab_receive", "FastLab · KTV nhận mẫu", new[]
         {
             Permissions.OrderRead, Permissions.OrderReadAll,
             Permissions.SampleReceive, Permissions.SampleQc,
+            Permissions.SidPrint,   // in lại SID khi nhận mẫu (SID hư/mất khi vận chuyển)
             Permissions.ResultRead, Permissions.ResultUpload,
         }),
         new("fastlab_hardcopy", "FastLab · Giao bản cứng", new[]

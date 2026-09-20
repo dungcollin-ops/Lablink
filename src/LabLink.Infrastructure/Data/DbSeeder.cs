@@ -42,6 +42,10 @@ public static class DbSeeder
         }
         await db.SaveChangesAsync(ct);
 
+        // 2b) Prune quyền đã gỡ khỏi role mặc định (seeder ở trên chỉ THÊM, không gỡ).
+        //     NV gom mẫu không còn quyền in SID — in chỉ ở lúc lấy mẫu & KTV nhận mẫu.
+        await PruneRolePermissionAsync(db, permByKey, "fastlab_gather", Permissions.SidPrint, ct);
+
         // 3) Demo users (dev/test) — bỏ qua nếu Seed:DemoUsers = false
         if (!seedDemoUsers) return;
 
@@ -70,6 +74,20 @@ public static class DbSeeder
             if (rolesByCode.TryGetValue(roleCode, out var role))
                 db.UserRoles.Add(new UserRole { User = user, Role = role });
         }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Gỡ 1 quyền khỏi 1 role (idempotent) — dùng khi quyền bị loại khỏi role mặc định.</summary>
+    private static async Task PruneRolePermissionAsync(
+        AppDbContext db, IReadOnlyDictionary<string, Permission> permByKey,
+        string roleCode, string permKey, CancellationToken ct)
+    {
+        if (!permByKey.TryGetValue(permKey, out var perm)) return;
+        var role = await db.Roles.Include(r => r.RolePermissions)
+            .FirstOrDefaultAsync(r => r.Code == roleCode, ct);
+        var rp = role?.RolePermissions.FirstOrDefault(x => x.PermissionId == perm.Id);
+        if (rp is null) return;
+        db.RolePermissions.Remove(rp);
         await db.SaveChangesAsync(ct);
     }
 }

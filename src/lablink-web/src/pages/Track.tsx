@@ -32,6 +32,7 @@ export default function Track({ session }: { session: Session }) {
   const token = session.token;
   const perms = session.permissions as string[];
   const myRole = hasMyWorkRole(perms);
+  const canPrintSid = perms.includes("sid.print"); // chỉ người lấy mẫu / KTV nhận mẫu mới thấy In SID
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState(myRole ? "MINE" : "");
   const [quick, setQuick] = useState<QuickFilter>("");
@@ -249,7 +250,7 @@ export default function Track({ session }: { session: Session }) {
                         <span key={sm.id} className={t.sidChip}>{sm.sid} · {sm.sampleType}</span>
                       ))}
                     </div>
-                    {detail.samples.length > 0 && (
+                    {detail.samples.length > 0 && canPrintSid && (
                       <button
                         className={`${a.btn}`}
                         style={{ marginTop: 10, borderColor: "var(--sid-border)", color: "var(--sid)" }}

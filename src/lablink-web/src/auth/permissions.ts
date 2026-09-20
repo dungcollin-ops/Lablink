@@ -54,8 +54,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "hardcopy.deliver",
     "sid.print", "result.read", "result.upload",
   ],
-  fastlab_gather: ["order.read", "order.read.all", "sample.gather", "sid.print"],
-  fastlab_receive: ["order.read", "order.read.all", "sample.receive", "sample.qc", "result.read", "result.upload"],
+  fastlab_gather: ["order.read", "order.read.all", "sample.gather"],
+  fastlab_receive: ["order.read", "order.read.all", "sample.receive", "sample.qc", "sid.print", "result.read", "result.upload"],
   fastlab_hardcopy: ["order.read", "order.read.all", "hardcopy.deliver"],
   admin: [
     "catalog.read", "catalog.price.edit",
