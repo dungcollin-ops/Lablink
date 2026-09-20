@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import type { Session } from "../auth/session";
 import { reportSummary, type ReportSummary } from "../api/reports";
+import { STAGE_LABEL } from "../workflow";
 import a from "./admin.module.css";
 import r from "./Report.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 
-const STAGE_LABEL: Record<string, string> = {
-  Ordered: "Chờ lấy mẫu", Collected: "Đã soạn mẫu", Sent: "Đã gửi",
-  Received: "Đã nhận", Running: "Đang chạy", Resulted: "Có kết quả",
+// Nhãn cho breakdown theo BƯỚC: làm rõ Resulted = đã trả KQ nhưng chưa giao bản cứng
+// (các phiếu đã giao/nhận bản cứng hiện ở dòng riêng — tổng 3 dòng này = "Đã trả kết quả" ở KPI).
+const REPORT_STAGE_LABEL: Record<string, string> = {
+  ...STAGE_LABEL,
+  Resulted: "Đã trả KQ (chưa giao bản cứng)",
 };
 
 export default function Report({ session }: { session: Session }) {
@@ -77,7 +80,7 @@ export default function Report({ session }: { session: Session }) {
         <div className={r.panelTitle}>Phiếu theo trạng thái</div>
         {data.byStage.map((st) => (
           <div key={st.stage} className={r.row}>
-            <span className={r.rowLabel}>{STAGE_LABEL[st.stage] ?? st.stage}</span>
+            <span className={r.rowLabel}>{REPORT_STAGE_LABEL[st.stage] ?? st.stage}</span>
             <span className={r.rowVal}>{st.count}</span>
           </div>
         ))}

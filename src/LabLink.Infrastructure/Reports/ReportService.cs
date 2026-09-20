@@ -11,7 +11,7 @@ public class ReportService : IReportService
 
     public ReportService(AppDbContext db) => _db = db;
 
-    private sealed record Row(OrderStage Stage, OrderSource Source, long Total, DateTimeOffset CreatedAt);
+    private sealed record Row(OrderStage Stage, OrderSource Source, long Total, DateTimeOffset CreatedAt, bool HasResult);
 
     public async Task<ReportSummary> GetSummaryAsync(DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
     {
@@ -21,7 +21,7 @@ public class ReportService : IReportService
 
         var rows = await _db.Orders.AsNoTracking()
             .Where(o => o.CreatedAt >= fromD && o.CreatedAt <= toD)
-            .Select(o => new Row(o.Stage, o.Source, o.Total, o.CreatedAt))
+            .Select(o => new Row(o.Stage, o.Source, o.Total, o.CreatedAt, o.Result != null))
             .ToListAsync(ct);
 
         var total = rows.Count;
@@ -35,10 +35,12 @@ public class ReportService : IReportService
             .Select(g => new SourceStat(g.Key.ToString(), g.Count(), g.Sum(x => x.Total)))
             .ToList();
 
-        // Tồn đọng / trễ: phiếu chưa có kết quả, nhóm theo tuổi.
+        // Tồn đọng / trễ: phiếu CHƯA có kết quả, nhóm theo tuổi.
+        // "Đã trả KQ" = phiếu đã có file kết quả (Result != null) — KHÔNG dựa vào Stage,
+        // vì phiếu đã trả KQ rồi chuyển sang bước bản cứng thì Stage không còn là Resulted.
         var now = DateTime.Now;
-        int resulted = rows.Count(r => r.Stage == OrderStage.Resulted);
-        var pending = rows.Where(r => r.Stage != OrderStage.Resulted).ToList();
+        int resulted = rows.Count(r => r.HasResult);
+        var pending = rows.Where(r => !r.HasResult).ToList();
         int today = 0, d1to3 = 0, over3 = 0;
         foreach (var r in pending)
         {
