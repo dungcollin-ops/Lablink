@@ -123,7 +123,6 @@ public record PatientSearchDto(
 public record SetStageRequest(string Stage, string? By = null);
 public record SetQualityRequest(string Quality);
 public record AssignCollectRequest(string Collector, DateTimeOffset? AppointmentAt, string? Place);
-public record SendSampleRequest(string SendVia, string? TrackingNo, string? Shipper, DateTimeOffset? SendAt);
 
 public record OrderResult(bool Ok, string? Error = null, OrderDto? Order = null)
 {

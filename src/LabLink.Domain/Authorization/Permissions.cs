@@ -14,7 +14,6 @@ public static class Permissions
     public const string OrderRead = "order.read";
     public const string OrderReadAll = "order.read.all";   // Xem MỌI phiếu (không giới hạn phòng ban)
     public const string SampleCollect = "sample.collect";   // B2 · Lấy mẫu
-    public const string SampleSend = "sample.send";
     public const string SampleGather = "sample.gather";     // B3 · Gom mẫu
     public const string SampleReceive = "sample.receive";   // B4 · Nhận mẫu
     public const string SampleQc = "sample.qc";
@@ -34,7 +33,7 @@ public static class Permissions
         CatalogRead, CatalogPriceEdit, CatalogManage,
         DealCreate, DealRead, DealApprove,
         OrderCreate, OrderRead, OrderReadAll,
-        SampleCollect, SampleSend, SampleGather, SampleReceive, SampleQc,
+        SampleCollect, SampleGather, SampleReceive, SampleQc,
         HardcopyDeliver, HardcopyReceive,
         SidPrint,
         ResultRead, ResultUpload,

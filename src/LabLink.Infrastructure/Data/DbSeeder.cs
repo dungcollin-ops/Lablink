@@ -52,6 +52,9 @@ public static class DbSeeder
             await db.SaveChangesAsync(ct);
         }
 
+        // 2c) Xoá hẳn permission đã loại bỏ (seeder ở trên chỉ thêm, không xoá permission cũ).
+        await PruneRetiredPermissionsAsync(db, new[] { "result.verify", "sample.send" }, ct);
+
         // 3) Demo users (dev/test) — bỏ qua nếu Seed:DemoUsers = false
         if (!seedDemoUsers) return;
 
@@ -94,6 +97,18 @@ public static class DbSeeder
         var rp = role?.RolePermissions.FirstOrDefault(x => x.PermissionId == perm.Id);
         if (rp is null) return;
         db.RolePermissions.Remove(rp);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Xoá hẳn các permission đã loại bỏ khỏi hệ thống (kèm role_permissions). Idempotent.</summary>
+    private static async Task PruneRetiredPermissionsAsync(AppDbContext db, string[] keys, CancellationToken ct)
+    {
+        var perms = await db.Permissions.Where(p => keys.Contains(p.Key)).ToListAsync(ct);
+        if (perms.Count == 0) return;
+        var ids = perms.Select(p => p.Id).ToList();
+        var rps = await db.RolePermissions.Where(rp => ids.Contains(rp.PermissionId)).ToListAsync(ct);
+        db.RolePermissions.RemoveRange(rps);
+        db.Permissions.RemoveRange(perms);
         await db.SaveChangesAsync(ct);
     }
 }

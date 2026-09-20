@@ -203,12 +203,6 @@ export const assignCollect = (
   body: { collector: string; appointmentAt?: string | null; place?: string | null },
 ) => api<OrderDto>(token, `/api/orders/${id}/assign-collect`, { method: "POST", body: JSON.stringify(body) });
 
-export const sendSample = (
-  token: string | undefined,
-  id: string,
-  body: { sendVia: string; trackingNo?: string | null; shipper?: string | null; sendAt?: string | null },
-) => api<OrderDto>(token, `/api/orders/${id}/send`, { method: "POST", body: JSON.stringify(body) });
-
 /** Upload file kết quả (multipart) — trả phiếu đã cập nhật. */
 export async function uploadResult(token: string | undefined, id: string, file: File): Promise<OrderDto> {
   const fd = new FormData();

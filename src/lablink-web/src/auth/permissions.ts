@@ -10,7 +10,6 @@ export type Permission =
   | "order.read"
   | "order.read.all"
   | "sample.collect"
-  | "sample.send"
   | "sample.gather"
   | "sample.receive"
   | "sample.qc"
@@ -61,7 +60,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "catalog.read", "catalog.price.edit",
     "deal.read", "deal.approve", "deal.create",
     "order.read", "order.read.all", "order.create",
-    "sample.collect", "sample.send", "sample.gather", "sample.receive", "sample.qc",
+    "sample.collect", "sample.gather", "sample.receive", "sample.qc",
     "hardcopy.deliver", "hardcopy.receive",
     "sid.print", "result.read", "result.upload",
     "user.manage", "role.manage", "department.manage", "audit.read", "report.read",

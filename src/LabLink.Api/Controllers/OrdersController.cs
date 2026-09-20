@@ -104,15 +104,6 @@ public class OrdersController : AdminControllerBase
         return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
     }
 
-    /// <summary>Phòng khám gửi mẫu → Đã gửi (phiếu của mình).</summary>
-    [HttpPost("{id:guid}/send")]
-    [HasPermission(Permissions.SampleSend)]
-    public async Task<IActionResult> SendSample(Guid id, [FromBody] SendSampleRequest req, CancellationToken ct)
-    {
-        var r = await _svc.SendSampleAsync(id, req, ActorId, SeeAll, ct);
-        return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
-    }
-
     /// <summary>Lab cập nhật tiến trình mẫu chi tiết (lấy/gửi/nhận).</summary>
     [HttpPost("{id:guid}/progress")]
     [HasPermission(Permissions.SampleReceive)]

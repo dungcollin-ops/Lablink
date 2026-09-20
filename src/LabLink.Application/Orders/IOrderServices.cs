@@ -36,7 +36,6 @@ public interface IOrderService
     Task<OrderResult> AssignCollectAsync(Guid orderId, AssignCollectRequest req, Guid actorId, CancellationToken ct = default);
 
     /// <summary>Phòng khám gửi mẫu → chuyển Đã gửi (chỉ phiếu của mình, đang Đã soạn mẫu).</summary>
-    Task<OrderResult> SendSampleAsync(Guid orderId, SendSampleRequest req, Guid actorId, bool seeAll, CancellationToken ct = default);
 }
 
 public interface IPatientService

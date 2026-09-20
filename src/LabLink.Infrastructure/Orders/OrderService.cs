@@ -556,32 +556,6 @@ public partial class OrderService : IOrderService
         return OrderResult.Success(await GetTracked(order.Id, ct));
     }
 
-    public async Task<OrderResult> SendSampleAsync(Guid orderId, SendSampleRequest r, Guid actorId, bool seeAll, CancellationToken ct = default)
-    {
-        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
-        if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
-        if (!await InScopeAsync(actorId, seeAll, order.CreatedById, order.DepartmentId, ct))
-            return OrderResult.Fail("Không có quyền trên phiếu này.");
-        if (order.Stage != OrderStage.Collected) return OrderResult.Fail("Phiếu không ở trạng thái Đã soạn mẫu.");
-        if (string.IsNullOrWhiteSpace(r.SendVia)) return OrderResult.Fail("Cần chọn hình thức gửi.");
-
-        order.SendVia = r.SendVia;
-        order.TrackingNo = r.TrackingNo;
-        order.Shipper = r.Shipper;
-        order.SendAt = (r.SendAt ?? DateTimeOffset.UtcNow).ToUniversalTime();
-        order.Stage = OrderStage.Gathered;
-        order.UpdatedAt = DateTimeOffset.UtcNow;
-        _db.OrderEvents.Add(new OrderEvent { OrderId = order.Id, Step = OrderStage.Gathered, ActorId = actorId, ActorName = await ActorNameAsync(actorId, ct), At = DateTimeOffset.UtcNow });
-
-        _db.AuditLogs.Add(new AuditLog
-        {
-            UserId = actorId, Action = "order.send",
-            ObjectType = "Order", ObjectId = order.Id.ToString(), Detail = $"{order.OrderNo} · {r.SendVia}",
-        });
-        await _db.SaveChangesAsync(ct);
-        return OrderResult.Success(await GetTracked(order.Id, ct));
-    }
-
     // ---- helpers ----
     private async Task<List<Sample>> BuildSamplesWithSidAsync(IEnumerable<string> rawTypes, CancellationToken ct)
     {
