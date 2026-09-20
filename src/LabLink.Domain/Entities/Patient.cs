@@ -9,7 +9,10 @@ public class Patient
     public string MaBN { get; set; } = "";
 
     public string FullName { get; set; } = "";
-    public DateOnly? Dob { get; set; }
+
+    /// <summary>Ngày sinh lưu dạng partial: "yyyy" (chỉ năm) | "yyyy-MM" | "yyyy-MM-dd".
+    /// Năm bắt buộc; ngày/tháng tùy chọn (BS/BN có thể không biết ngày/tháng).</summary>
+    public string? Dob { get; set; }
     public string? Gender { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }

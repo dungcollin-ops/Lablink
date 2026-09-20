@@ -22,6 +22,32 @@ public partial class OrderService : IOrderService
     [GeneratedRegex(@"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$")]
     private static partial Regex EmailRegex();
 
+    [GeneratedRegex(@"^(\d{4})(-(\d{2})(-(\d{2}))?)?$")]
+    private static partial Regex DobRegex();
+
+    /// <summary>Chuẩn hoá ngày sinh partial: chấp nhận "yyyy" | "yyyy-MM" | "yyyy-MM-dd".
+    /// Năm bắt buộc (1900..nay); ngày/tháng nếu có phải hợp lệ. Trả null nếu trống/không hợp lệ.</summary>
+    private static string? NormalizeDob(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var s = raw.Trim();
+        var m = DobRegex().Match(s);
+        if (!m.Success) return null;
+        var year = int.Parse(m.Groups[1].Value);
+        if (year < 1900 || year > DateTime.Now.Year) return null;
+        if (m.Groups[3].Success)
+        {
+            var mo = int.Parse(m.Groups[3].Value);
+            if (mo is < 1 or > 12) return null;
+            if (m.Groups[5].Success)
+            {
+                var d = int.Parse(m.Groups[5].Value);
+                if (d is < 1 or > 31) return null;
+            }
+        }
+        return s;
+    }
+
     public async Task<OrderResult> CreateAsync(Guid userId, CreateOrderRequest req, CancellationToken ct = default)
     {
         var source = req.Source?.Trim().ToLowerInvariant() == "retail"
@@ -30,6 +56,8 @@ public partial class OrderService : IOrderService
         // ---- Validate ----
         if (req.Patient is null || string.IsNullOrWhiteSpace(req.Patient.FullName))
             return OrderResult.Fail("Thiếu họ tên bệnh nhân.");
+        if (NormalizeDob(req.Patient.Dob) is null)
+            return OrderResult.Fail("Cần nhập năm sinh (gõ đủ dd/mm/yyyy, hoặc chỉ năm yyyy).");
         if (req.Items is null || req.Items.Count == 0)
             return OrderResult.Fail("Cần ít nhất 1 xét nghiệm.");
         if (req.Items.Any(i => i.Qty < 1))
@@ -235,6 +263,8 @@ public partial class OrderService : IOrderService
         // ---- Validate ----
         if (req.Patient is null || string.IsNullOrWhiteSpace(req.Patient.FullName))
             return OrderResult.Fail("Thiếu họ tên bệnh nhân.");
+        if (NormalizeDob(req.Patient.Dob) is null)
+            return OrderResult.Fail("Cần nhập năm sinh (gõ đủ dd/mm/yyyy, hoặc chỉ năm yyyy).");
         if (req.Items is null || req.Items.Count == 0)
             return OrderResult.Fail("Cần ít nhất 1 xét nghiệm.");
         if (req.Items.Any(i => i.Qty < 1))
@@ -257,7 +287,7 @@ public partial class OrderService : IOrderService
         // ---- Cập nhật hồ sơ bệnh nhân (DANH MỤC BN) + snapshot trên phiếu ----
         var p = order.Patient;
         p.FullName = req.Patient.FullName.Trim();
-        p.Dob = req.Patient.Dob;
+        p.Dob = NormalizeDob(req.Patient.Dob);
         p.Gender = req.Patient.Gender;
         p.Phone = req.Patient.Phone;
         p.Email = email;
@@ -596,7 +626,7 @@ public partial class OrderService : IOrderService
         {
             MaBN = maBN!,
             FullName = p.FullName.Trim(),
-            Dob = p.Dob,
+            Dob = NormalizeDob(p.Dob),
             Gender = p.Gender,
             Phone = p.Phone,
             Email = email,

@@ -3,6 +3,7 @@ import { getOrderFull, updateOrder, setOrderStage, type OrderFull } from "../api
 import { fetchCatalog, type CatalogItem } from "../api/catalog";
 import { ApiError } from "../api/http";
 import { allowedNext, STAGE_ACTION, stageLabel } from "../workflow";
+import { isoToVnDob, vnToIsoDob, maskDob } from "../lib/dob";
 import Modal from "./Modal";
 import ResultViewer from "./ResultViewer";
 import SampleSteps from "./SampleSteps";
@@ -25,7 +26,7 @@ interface PForm {
   clinicName: string; doctorCode: string; diagnosis: string; orderNote: string;
 }
 const toPForm = (o: OrderFull): PForm => ({
-  fullName: o.patient.fullName, dob: o.patient.dob ?? "", gender: o.patient.gender ?? "",
+  fullName: o.patient.fullName, dob: isoToVnDob(o.patient.dob), gender: o.patient.gender ?? "",
   phone: o.patient.phone ?? "", email: o.patient.email ?? "", nationalId: o.patient.nationalId ?? "",
   bhyt: o.patient.bhyt ?? "", address: o.patient.address ?? "", note: o.patient.note ?? "",
   clinicName: o.clinicName ?? "", doctorCode: o.doctorCode ?? "", diagnosis: o.diagnosis ?? "",
@@ -126,13 +127,14 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
   async function save() {
     setError("");
     if (!pf.fullName.trim()) { setError("Bắt buộc nhập họ tên bệnh nhân."); return; }
+    if (!vnToIsoDob(pf.dob)) { setError("Cần nhập năm sinh (gõ đủ dd/mm/yyyy, hoặc chỉ năm yyyy)."); return; }
     if (items.length === 0) { setError("Cần ít nhất 1 xét nghiệm."); return; }
     setBusy(true);
     try {
       await updateOrder(token, o.id, {
         patient: {
           fullName: pf.fullName.trim(),
-          dob: pf.dob || undefined, gender: pf.gender || undefined,
+          dob: vnToIsoDob(pf.dob) || undefined, gender: pf.gender || undefined,
           phone: pf.phone || undefined, email: pf.email || undefined,
           nationalId: pf.nationalId || undefined, bhyt: pf.bhyt || undefined,
           address: pf.address || undefined, note: pf.note || undefined,
@@ -237,7 +239,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
           <div style={grid3}>
             <Row label="Mã BN" value={o.patient.maBN} />
             <Row label="Họ tên" value={o.patient.fullName} />
-            <Row label="Ngày sinh" value={o.patient.dob} />
+            <Row label="Ngày sinh" value={isoToVnDob(o.patient.dob)} />
             <Row label="Giới tính" value={o.patient.gender} />
             <Row label="Điện thoại" value={o.patient.phone} />
             <Row label="Email" value={o.patient.email} />
@@ -311,7 +313,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
           <div style={blkTitle}>Bệnh nhân (mã BN {o.patient.maBN})</div>
           <div style={grid3}>
             <Field label="Họ tên *" v={pf.fullName} on={(x) => setP("fullName", x)} />
-            <Field label="Ngày sinh" type="date" v={pf.dob} on={(x) => setP("dob", x)} />
+            <Field label="Ngày sinh *" v={pf.dob} on={(x) => setP("dob", x)} mask={maskDob} placeholder="dd/mm/yyyy hoặc yyyy" />
             <FieldSel label="Giới tính" v={pf.gender} on={(x) => setP("gender", x)} opts={[["", "—"], ["Nam", "Nam"], ["Nữ", "Nữ"]]} />
             <Field label="Điện thoại" v={pf.phone} on={(x) => setP("phone", x)} />
             <Field label="Email" v={pf.email} on={(x) => setP("email", x)} />
@@ -373,11 +375,11 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
   );
 }
 
-function Field({ label, v, on, type }: { label: string; v: string; on: (x: string) => void; type?: string }) {
+function Field({ label, v, on, type, mask, placeholder }: { label: string; v: string; on: (x: string) => void; type?: string; mask?: (x: string) => string; placeholder?: string }) {
   return (
     <div className={a.field} style={{ marginBottom: 0 }}>
       <label className={a.label}>{label}</label>
-      <input className={a.input} type={type ?? "text"} value={v} onChange={(e) => on(e.target.value)} />
+      <input className={a.input} type={type ?? "text"} placeholder={placeholder} value={v} onChange={(e) => on(mask ? mask(e.target.value) : e.target.value)} />
     </div>
   );
 }

@@ -136,6 +136,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.MaBN).HasMaxLength(30);
             e.HasIndex(x => x.MaBN);
             e.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Dob).HasMaxLength(10);   // partial: yyyy | yyyy-MM | yyyy-MM-dd
             e.Property(x => x.Gender).HasMaxLength(10);
             e.Property(x => x.Phone).HasMaxLength(30);
             e.Property(x => x.Email).HasMaxLength(256);

@@ -3,7 +3,7 @@ namespace LabLink.Application.Orders;
 public record PatientInput(
     string? MaBN,
     string FullName,
-    DateOnly? Dob,
+    string? Dob,   // partial: "yyyy" | "yyyy-MM" | "yyyy-MM-dd" (năm bắt buộc; ngày/tháng tùy chọn)
     string? Gender,
     string? Phone,
     string? Email,
@@ -49,7 +49,7 @@ public record OrderDto(
     ProgressDto Progress);
 
 public record PatientDetailDto(
-    Guid Id, string MaBN, string FullName, DateOnly? Dob,
+    Guid Id, string MaBN, string FullName, string? Dob,
     string? Gender, string? Phone, string? Email, string? NationalId,
     string? Bhyt, string? Address, string? Note);
 
@@ -117,7 +117,7 @@ public record OrderListItemDto(
 public record ResultFile(string FileName, string ContentType, byte[] Content);
 
 public record PatientSearchDto(
-    Guid Id, string MaBN, string FullName, DateOnly? Dob,
+    Guid Id, string MaBN, string FullName, string? Dob,
     string? Gender, string? Phone, string? Address);
 
 public record SetStageRequest(string Stage, string? By = null);

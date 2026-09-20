@@ -12,32 +12,12 @@ import { myDealPrices } from "../api/deals";
 import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
+import { isoToVnDob as isoToVn, vnToIsoDob as vnToIso, maskDob } from "../lib/dob";
 import a from "./admin.module.css";
 import s from "./OrderForm.module.css";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 const EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
-
-// Ngày sinh: nội bộ nhập/hiển thị dd/mm/yyyy; API dùng ISO yyyy-MM-dd.
-const isoToVn = (iso?: string | null) => {
-  if (!iso) return "";
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
-};
-const vnToIso = (s: string) => {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s.trim());
-  if (!m) return "";
-  const d = +m[1], mo = +m[2];
-  if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
-  return `${m[3]}-${m[2]}-${m[1]}`;
-};
-const maskDob = (raw: string) => {
-  const d = raw.replace(/\D/g, "").slice(0, 8);
-  let out = d.slice(0, 2);
-  if (d.length > 2) out += "/" + d.slice(2, 4);
-  if (d.length > 4) out += "/" + d.slice(4, 8);
-  return out;
-};
 
 interface Patient {
   maBN: string;
@@ -208,6 +188,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   async function submit() {
     setError("");
     if (!patient.fullName.trim()) return setError("Bắt buộc nhập họ tên bệnh nhân.");
+    if (!vnToIso(patient.dob)) return setError("Cần nhập năm sinh (gõ đủ dd/mm/yyyy, hoặc chỉ năm yyyy).");
     if (cart.length === 0) return setError("Cần ít nhất 1 xét nghiệm.");
     const email = patient.email.replace(/\s/g, "").toLowerCase();
     if (email && !EMAIL.test(email)) {
@@ -324,12 +305,12 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                 <input className={s.input} value={patient.fullName} onChange={(e) => set("fullName", e.target.value.toUpperCase())} style={{ textTransform: "uppercase" }} />
               </div>
               <div className={s.field}>
-                <label className={s.label}>Ngày tháng năm sinh</label>
+                <label className={s.label}>Ngày sinh * <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(đủ dd/mm/yyyy, hoặc chỉ năm yyyy)</span></label>
                 <input
                   className={s.input}
                   type="text"
                   inputMode="numeric"
-                  placeholder="dd/mm/yyyy"
+                  placeholder="dd/mm/yyyy hoặc yyyy"
                   maxLength={10}
                   value={patient.dob}
                   onChange={(e) => set("dob", maskDob(e.target.value))}
