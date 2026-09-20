@@ -35,6 +35,10 @@ export async function apiLogin(email: string, password: string): Promise<Session
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error("invalid-credentials");
+  if (!res.ok) {
+    let msg = "Đăng nhập không thành công.";
+    try { msg = (await res.json()).message ?? msg; } catch { /* body rỗng */ }
+    throw new Error(msg);
+  }
   return toSession(await res.json());
 }

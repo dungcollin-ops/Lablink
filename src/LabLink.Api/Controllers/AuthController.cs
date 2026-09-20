@@ -20,9 +20,9 @@ public class AuthController : ControllerBase
         [FromBody] LoginRequest request, CancellationToken ct)
     {
         var result = await _auth.LoginAsync(request, ct);
-        if (result is null)
-            return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
-        return Ok(result);
+        if (result.Response is null)
+            return Unauthorized(new { message = result.Error ?? "Đăng nhập không thành công." });
+        return Ok(result.Response);
     }
 
     /// <summary>Thông tin phiên hiện tại (user + roles + permissions).</summary>

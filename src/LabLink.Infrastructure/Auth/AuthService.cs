@@ -19,7 +19,7 @@ public class AuthService : IAuthService
         _jwt = jwt;
     }
 
-    public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         // Định danh đăng nhập = Tên tài khoản HOẶC Email (khách lẻ). So khớp không phân biệt hoa/thường.
         var login = request.Email.Trim();
@@ -30,8 +30,10 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.AccountName == login
                 || (u.Email != null && u.Email == loginLower), ct);
 
-        if (user is null || user.Status != UserStatus.Active) return null;
-        if (!_hasher.Verify(request.Password, user.PasswordHash)) return null;
+        // Báo rõ người dùng sai cái gì (hệ nội bộ) để họ sửa nhanh.
+        if (user is null) return new LoginResult(null, "Tên đăng nhập không tồn tại.");
+        if (user.Status != UserStatus.Active) return new LoginResult(null, "Tài khoản đang bị khoá — liên hệ quản trị.");
+        if (!_hasher.Verify(request.Password, user.PasswordHash)) return new LoginResult(null, "Mật khẩu không đúng.");
 
         var (roles, permissions) = Aggregate(user);
         var (token, expiresAt) = _jwt.CreateToken(user, roles, permissions);
@@ -40,7 +42,7 @@ public class AuthService : IAuthService
         _db.AuditLogs.Add(new AuditLog { UserId = user.Id, Action = "auth.login" });
         await _db.SaveChangesAsync(ct);
 
-        return new LoginResponse(token, expiresAt, ToMe(user, roles, permissions));
+        return new LoginResult(new LoginResponse(token, expiresAt, ToMe(user, roles, permissions)), null);
     }
 
     public async Task<MeDto?> GetMeAsync(Guid userId, CancellationToken ct = default)

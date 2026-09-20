@@ -28,10 +28,10 @@ export default function Login({ onLogin }: Props) {
       } else {
         session = mockLogin(email, password);
       }
-      if (!session) throw new Error("invalid");
+      if (!session) throw new Error("Sai thông tin đăng nhập.");
       onLogin(session);
-    } catch {
-      setError("Email hoặc mật khẩu không đúng.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Đăng nhập không thành công.");
     } finally {
       setBusy(false);
     }
