@@ -12,6 +12,7 @@ import { myDealPrices } from "../api/deals";
 import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
+import Modal from "../components/Modal";
 import { isoToVnDob as isoToVn, vnToIsoDob as vnToIso, maskDob } from "../lib/dob";
 import a from "./admin.module.css";
 import s from "./OrderForm.module.css";
@@ -77,6 +78,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [created, setCreated] = useState<OrderDto | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [comboBusy, setComboBusy] = useState("");
+  const [phoneWarn, setPhoneWarn] = useState(false); // cảnh báo SĐT 9/11 số (lệch 10 số thường gặp)
 
   const set = (k: keyof Patient, v: string) => setPatient((p) => ({ ...p, [k]: v }));
 
@@ -185,7 +187,10 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
 
   const estTotal = cart.reduce((sum, x) => sum + effPrice(x.labTestId, x.listPrice) * x.qty, 0);
 
-  async function submit() {
+  const phoneDigits = patient.phone.replace(/\D/g, "").length;
+  const phoneOdd = phoneDigits === 9 || phoneDigits === 11; // lệch 1 số so với 10 → nghi sai
+
+  async function submit(skipPhoneCheck = false) {
     setError("");
     if (!patient.fullName.trim()) return setError("Bắt buộc nhập họ tên bệnh nhân.");
     if (!vnToIso(patient.dob)) return setError("Cần nhập năm sinh (gõ đủ dd/mm/yyyy, hoặc chỉ năm yyyy).");
@@ -195,6 +200,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
       setEmailErr(true);
       return setError("Email không hợp lệ — ví dụ: ten@benhvien.vn");
     }
+    // Cảnh báo mềm SĐT 9/11 số — cho phép bỏ qua nếu người dùng chắc chắn.
+    if (!skipPhoneCheck && phoneOdd) { setPhoneWarn(true); return; }
     setBusy(true);
     try {
       const order = await createOrder(token, {
@@ -480,7 +487,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
             </div>
           )}
           {error && <div className={a.error} style={{ marginTop: 8 }}>{error}</div>}
-          <button className={s.submit} onClick={submit} disabled={busy}>
+          <button className={s.submit} onClick={() => submit()} disabled={busy}>
             {busy ? "Đang gửi…" : isDoctor ? "Gửi chỉ định" : "Đặt xét nghiệm"}
           </button>
           {isDoctor && <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8, textAlign: "center" }}>
@@ -490,6 +497,30 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
       </div>
 
       {qrOpen && <QrScan onFill={applyCccd} onClose={() => setQrOpen(false)} />}
+
+      {phoneWarn && (
+        <Modal
+          title="Kiểm tra số điện thoại"
+          onClose={() => setPhoneWarn(false)}
+          footer={
+            <>
+              <button className={a.btn} onClick={() => setPhoneWarn(false)}>Sửa lại</button>
+              <button
+                className={`${a.btn} ${a.btnPrimary}`}
+                onClick={() => { setPhoneWarn(false); submit(true); }}
+              >
+                Đúng, tiếp tục
+              </button>
+            </>
+          }
+        >
+          <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+            Số điện thoại vừa nhập có <b>{phoneDigits} số</b> — số điện thoại thường có <b>10 số</b>.
+            <br />
+            Bạn có chắc số <b>{patient.phone}</b> là đúng không?
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
