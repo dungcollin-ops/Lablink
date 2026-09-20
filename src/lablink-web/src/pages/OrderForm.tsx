@@ -13,6 +13,7 @@ import { ApiError } from "../api/http";
 import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
 import Modal from "../components/Modal";
+import CatalogPicker from "../components/CatalogPicker";
 import { isoToVnDob as isoToVn, vnToIsoDob as vnToIso, maskDob } from "../lib/dob";
 import a from "./admin.module.css";
 import s from "./OrderForm.module.css";
@@ -79,6 +80,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [qrOpen, setQrOpen] = useState(false);
   const [comboBusy, setComboBusy] = useState("");
   const [phoneWarn, setPhoneWarn] = useState(false); // cảnh báo SĐT 9/11 số (lệch 10 số thường gặp)
+  const [pickerOpen, setPickerOpen] = useState(false); // popup duyệt toàn bộ danh mục
 
   const set = (k: keyof Patient, v: string) => setPatient((p) => ({ ...p, [k]: v }));
 
@@ -423,11 +425,25 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
             <div className={s.searchBox}>
               <input
                 className={s.input}
-                style={{ width: "100%" }}
+                style={{ width: "100%", paddingRight: 44 }}
                 placeholder="Tìm tên hoặc mã xét nghiệm…"
                 value={tQuery}
                 onChange={(e) => setTQuery(e.target.value)}
               />
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                title="Xem toàn bộ danh mục xét nghiệm"
+                aria-label="Xem toàn bộ danh mục xét nghiệm"
+                style={{
+                  position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)",
+                  height: 30, width: 32, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  border: "1px solid var(--border-3)", borderRadius: 8, background: "var(--action-soft)",
+                  color: "var(--action-hover)", cursor: "pointer", fontSize: 15,
+                }}
+              >
+                ☰
+              </button>
               {tResults.length > 0 && (
                 <div className={s.results}>
                   {tResults.map((it) => (
@@ -497,6 +513,15 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
       </div>
 
       {qrOpen && <QrScan onFill={applyCccd} onClose={() => setQrOpen(false)} />}
+
+      {pickerOpen && (
+        <CatalogPicker
+          token={token}
+          addedIds={new Set(cart.map((x) => x.labTestId))}
+          onAdd={addTest}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {phoneWarn && (
         <Modal
