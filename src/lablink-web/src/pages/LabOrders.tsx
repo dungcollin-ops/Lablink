@@ -3,13 +3,16 @@ import type { Session } from "../auth/session";
 import {
   assignCollect,
   downloadResult,
+  fetchQcEvidenceBlob,
   getOrder,
   listOrders,
+  rejectSample,
   setOrderStage,
   setSampleQuality,
   uploadResult,
   type OrderDto,
   type OrderListItem,
+  type SampleDto,
 } from "../api/orders";
 import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
@@ -75,6 +78,11 @@ export default function LabOrders({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [rejectFor, setRejectFor] = useState<SampleDto | null>(null); // mẫu đang từ chối (QC không đạt)
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectFile, setRejectFile] = useState<File | null>(null);
+  const [rejectErr, setRejectErr] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null); // ảnh bằng chứng đang xem
 
   const reloadList = useCallback(() => {
     setLoading(true);
@@ -111,6 +119,28 @@ export default function LabOrders({ session }: { session: Session }) {
       setDetail(updated);
       reloadList(); // QC có thể đã tự chuyển "Đã nhận mẫu" → cập nhật badge dòng
     } finally { setBusy(false); }
+  }
+  function openReject(sm: SampleDto) {
+    setRejectFor(sm); setRejectReason(""); setRejectFile(null); setRejectErr("");
+  }
+  async function doReject() {
+    if (!rejectFor) return;
+    if (!rejectReason.trim()) { setRejectErr("Cần nhập lý do không đạt."); return; }
+    setBusy(true); setRejectErr("");
+    try {
+      const updated = await rejectSample(token, rejectFor.id, rejectReason.trim(), rejectFile);
+      setDetail(updated);
+      reloadList();
+      setRejectFor(null);
+    } catch (e) {
+      setRejectErr(e instanceof ApiError ? e.message : "Lỗi từ chối mẫu");
+    } finally { setBusy(false); }
+  }
+  async function viewEvidence(sampleId: string) {
+    try {
+      const { url } = await fetchQcEvidenceBlob(token, sampleId);
+      setEvidenceUrl(url);
+    } catch { /* ignore */ }
   }
   async function onUpload(orderId: string, file: File) {
     setBusy(true);
@@ -272,17 +302,27 @@ export default function LabOrders({ session }: { session: Session }) {
                     <div>
                       <div className={t.blockTitle}>Mẫu &amp; chất lượng ({detail.samples.length})</div>
                       {detail.samples.map((sm) => (
-                        <div key={sm.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", flexWrap: "wrap" }}>
-                          <span className={t.sidChip}>{sm.sid}</span>
-                          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{sm.sampleType}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: sm.quality === "Pass" ? "var(--success-text)" : sm.quality === "Fail" ? "var(--danger)" : "var(--text-faint)" }}>
-                            {QC_LABEL[sm.quality]}
-                          </span>
-                          {canQc && (
-                            <span style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                              <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => qc(sm.id, "Pass")}>Đạt</button>
-                              <button className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => qc(sm.id, "Fail")}>Không đạt</button>
+                        <div key={sm.id} style={{ padding: "5px 0" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <span className={t.sidChip}>{sm.sid}</span>
+                            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{sm.sampleType}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: sm.quality === "Pass" ? "var(--success-text)" : sm.quality === "Fail" ? "var(--danger)" : "var(--text-faint)" }}>
+                              {QC_LABEL[sm.quality]}
                             </span>
+                            {canQc && (
+                              <span style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                                <button className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => qc(sm.id, "Pass")}>Đạt</button>
+                                <button className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => openReject(sm)}>Không đạt</button>
+                              </span>
+                            )}
+                          </div>
+                          {sm.qcReason && (
+                            <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 3, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span>✗ Không đạt: {sm.qcReason}</span>
+                              {sm.hasQcEvidence && (
+                                <button className={a.btn} style={{ padding: "1px 8px", fontSize: 11.5 }} onClick={() => viewEvidence(sm.id)}>👁 Xem ảnh</button>
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}
@@ -335,6 +375,51 @@ export default function LabOrders({ session }: { session: Session }) {
       })}
 
       {printOrder && <SidPrint order={printOrder} onClose={() => setPrintOrder(null)} />}
+
+      {rejectFor && (
+        <Modal
+          title={`Từ chối mẫu ${rejectFor.sid}`}
+          onClose={() => setRejectFor(null)}
+          footer={
+            <>
+              <button className={a.btn} onClick={() => setRejectFor(null)}>Huỷ</button>
+              <button className={`${a.btn} ${a.btnDanger}`} onClick={doReject} disabled={busy}>
+                {busy ? "Đang lưu…" : "Xác nhận không đạt"}
+              </button>
+            </>
+          }
+        >
+          {rejectErr && <div className={a.error}>{rejectErr}</div>}
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 10 }}>
+            Mẫu không đạt sẽ được ghi nhận và <b>phiếu quay lại "chờ lấy mẫu"</b> để lấy lại từ đầu.
+          </div>
+          <div className={a.field}>
+            <label className={a.label}>Lý do không đạt *</label>
+            <textarea
+              className={a.input}
+              rows={3}
+              placeholder="Ví dụ: mẫu tán huyết, thiếu thể tích, sai ống, dán nhầm SID…"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+          </div>
+          <div className={a.field}>
+            <label className={a.label}>Ảnh bằng chứng (tùy chọn)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setRejectFile(e.target.files?.[0] ?? null)}
+            />
+            {rejectFile && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Đã chọn: {rejectFile.name}</div>}
+          </div>
+        </Modal>
+      )}
+
+      {evidenceUrl && (
+        <Modal title="Ảnh bằng chứng" onClose={() => { URL.revokeObjectURL(evidenceUrl); setEvidenceUrl(null); }}>
+          <img src={evidenceUrl} alt="Ảnh bằng chứng QC" style={{ maxWidth: "100%", borderRadius: 8 }} />
+        </Modal>
+      )}
 
       {assignOpen && detail && (
         <AssignCollectModal

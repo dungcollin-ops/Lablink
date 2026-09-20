@@ -478,6 +478,62 @@ public partial class OrderService : IOrderService
         return OrderResult.Success(await GetTracked(sample.OrderId, ct));
     }
 
+    public async Task<OrderResult> RejectSampleAsync(
+        Guid sampleId, string reason, string? fileName, string? contentType, byte[]? content, Guid actorId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) return OrderResult.Fail("Cần nhập lý do không đạt.");
+        var sample = await _db.Samples.FirstOrDefaultAsync(s => s.Id == sampleId, ct);
+        if (sample is null) return OrderResult.Fail("Không tìm thấy mẫu.");
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == sample.OrderId, ct);
+        if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
+
+        var now = DateTimeOffset.UtcNow;
+        var actorName = await ActorNameAsync(actorId, ct);
+
+        sample.Quality = SampleQuality.Fail;
+        sample.QcReason = reason.Trim();
+        sample.QcRejectedBy = actorName;
+        sample.QcRejectedAt = now;
+        if (content is { Length: > 0 })
+        {
+            sample.QcEvidence = content;
+            sample.QcEvidenceType = contentType;
+            sample.QcEvidenceName = fileName;
+        }
+
+        // Quay lại "chờ lấy mẫu": reset 3 xác nhận (nhận-đi-gom / đã-lấy / đã-gom) + mốc nhận.
+        order.GatherClaimBy = null; order.GatherClaimAt = null;
+        order.CollectBy = null; order.CollectAt = null;
+        order.GatherBy = null; order.GatherAt = null;
+        order.ReceiveBy = null; order.ReceiveAt = null;
+        order.ExpectedResultAt = null;
+        sample.CollectedBy = null; sample.CollectedAt = null;
+        sample.ReceivedBy = null; sample.ReceivedAt = null;
+        order.Stage = OrderStage.Ordered;
+        order.UpdatedAt = now;
+
+        _db.OrderEvents.Add(new OrderEvent
+        {
+            OrderId = order.Id, Step = OrderStage.Ordered, ActorId = actorId, ActorName = actorName,
+            At = now, Note = $"Mẫu KHÔNG đạt — lấy lại. Lý do: {reason.Trim()}",
+        });
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = actorId, Action = "sample.reject",
+            ObjectType = "Sample", ObjectId = sample.Id.ToString(), Detail = $"{sample.Sid} · {reason.Trim()}",
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return OrderResult.Success(await GetTracked(order.Id, ct));
+    }
+
+    public async Task<ResultFile?> GetQcEvidenceAsync(Guid sampleId, CancellationToken ct = default)
+    {
+        var s = await _db.Samples.FirstOrDefaultAsync(x => x.Id == sampleId, ct);
+        if (s?.QcEvidence is null || s.QcEvidence.Length == 0) return null;
+        return new ResultFile(s.QcEvidenceName ?? "bangchung", s.QcEvidenceType ?? "application/octet-stream", s.QcEvidence);
+    }
+
     public async Task<OrderResult> UploadResultAsync(
         Guid orderId, string fileName, string contentType, byte[] content, Guid actorId, CancellationToken ct = default)
     {
@@ -644,7 +700,8 @@ public partial class OrderService : IOrderService
         o.Items.Select(i => new OrderItemDto(
             i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
-            s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString())).ToList(),
+            s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString(),
+            s.QcReason, s.QcRejectedAt, s.QcEvidence != null)).ToList(),
         resultFileName != null, resultFileName,
         new ProgressDto(
             o.CollectPlace, o.CollectBy, o.CollectAt,
@@ -663,7 +720,8 @@ public partial class OrderService : IOrderService
         o.Items.Select(i => new OrderItemDto(
             i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
-            s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString())).ToList(),
+            s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString(),
+            s.QcReason, s.QcRejectedAt, s.QcEvidence != null)).ToList(),
         o.Events.OrderBy(ev => ev.At).Select(ev => new OrderEventDto(
             ev.Step.ToString(), ev.ActorName, ev.At, ev.Note)).ToList(),
         resultFileName != null, resultFileName,

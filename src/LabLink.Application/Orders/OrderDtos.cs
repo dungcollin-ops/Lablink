@@ -27,7 +27,8 @@ public record CreateOrderRequest(
 public record OrderItemDto(
     Guid Id, Guid LabTestId, string TestCode, string TestName, string SampleType, int Qty, long UnitPrice);
 
-public record SampleDto(Guid Id, string Sid, string SampleType, string? TubeType, string Quality);
+public record SampleDto(Guid Id, string Sid, string SampleType, string? TubeType, string Quality,
+    string? QcReason = null, DateTimeOffset? QcRejectedAt = null, bool HasQcEvidence = false);
 
 public record OrderDto(
     Guid Id,

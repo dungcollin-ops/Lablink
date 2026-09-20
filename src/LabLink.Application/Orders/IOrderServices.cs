@@ -20,8 +20,15 @@ public interface IOrderService
     /// <summary>Lab cập nhật trạng thái phiếu (tiến trình mẫu).</summary>
     Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, string? by = null, CancellationToken ct = default);
 
-    /// <summary>Lab đánh giá chất lượng 1 mẫu (Pass/Fail).</summary>
+    /// <summary>Lab đánh giá chất lượng 1 mẫu (Pass/Fail). Pass → tự "Nhận mẫu".</summary>
     Task<OrderResult> SetSampleQualityAsync(Guid sampleId, string quality, Guid actorId, CancellationToken ct = default);
+
+    /// <summary>Từ chối mẫu (QC không đạt): lý do bắt buộc + ảnh bằng chứng (tùy chọn),
+    /// phiếu quay lại "chờ lấy mẫu" (reset 3 xác nhận + mốc nhận).</summary>
+    Task<OrderResult> RejectSampleAsync(Guid sampleId, string reason, string? fileName, string? contentType, byte[]? content, Guid actorId, CancellationToken ct = default);
+
+    /// <summary>Lấy ảnh bằng chứng QC của 1 mẫu. Null nếu không có.</summary>
+    Task<ResultFile?> GetQcEvidenceAsync(Guid sampleId, CancellationToken ct = default);
 
     /// <summary>Lab tải file kết quả lên → phiếu chuyển "Có kết quả".</summary>
     Task<OrderResult> UploadResultAsync(Guid orderId, string fileName, string contentType, byte[] content, Guid actorId, CancellationToken ct = default);
@@ -34,8 +41,6 @@ public interface IOrderService
 
     /// <summary>PXN phân công NV đến lấy mẫu (khách lẻ) → sinh SID + chuyển Đã soạn mẫu.</summary>
     Task<OrderResult> AssignCollectAsync(Guid orderId, AssignCollectRequest req, Guid actorId, CancellationToken ct = default);
-
-    /// <summary>Phòng khám gửi mẫu → chuyển Đã gửi (chỉ phiếu của mình, đang Đã soạn mẫu).</summary>
 }
 
 public interface IPatientService

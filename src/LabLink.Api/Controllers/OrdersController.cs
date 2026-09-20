@@ -95,6 +95,32 @@ public class OrdersController : AdminControllerBase
         return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
     }
 
+    /// <summary>Từ chối mẫu (QC không đạt): lý do + ảnh bằng chứng (tùy chọn) → phiếu về "chờ lấy mẫu".</summary>
+    [HttpPost("samples/{sampleId:guid}/reject")]
+    [HasPermission(Permissions.SampleQc)]
+    [RequestSizeLimit(20_000_000)]
+    public async Task<IActionResult> RejectSample(Guid sampleId, [FromForm] string reason, IFormFile? file, CancellationToken ct)
+    {
+        byte[]? content = null; string? name = null, type = null;
+        if (file is { Length: > 0 })
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+            content = ms.ToArray(); name = file.FileName; type = file.ContentType;
+        }
+        var r = await _svc.RejectSampleAsync(sampleId, reason, name, type, content, ActorId, ct);
+        return r.Ok ? Ok(r.Order) : BadRequest(new { message = r.Error });
+    }
+
+    /// <summary>Xem ảnh bằng chứng QC của 1 mẫu.</summary>
+    [HttpGet("samples/{sampleId:guid}/qc-evidence")]
+    [HasPermission(Permissions.ResultRead)]
+    public async Task<IActionResult> QcEvidence(Guid sampleId, CancellationToken ct)
+    {
+        var f = await _svc.GetQcEvidenceAsync(sampleId, ct);
+        return f is null ? NotFound() : File(f.Content, f.ContentType, f.FileName);
+    }
+
     /// <summary>PXN phân công NV đến lấy mẫu (khách lẻ) → sinh SID + Đã soạn mẫu.</summary>
     [HttpPost("{id:guid}/assign-collect")]
     [HasPermission(Permissions.SampleCollect)]

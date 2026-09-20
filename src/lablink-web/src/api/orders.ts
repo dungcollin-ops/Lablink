@@ -16,6 +16,9 @@ export interface SampleDto {
   sampleType: string;
   tubeType?: string | null;
   quality: string;
+  qcReason?: string | null;
+  qcRejectedAt?: string | null;
+  hasQcEvidence?: boolean;
 }
 export interface ProgressDto {
   collectPlace?: string | null;
@@ -193,6 +196,38 @@ export const setOrderStage = (token: string | undefined, id: string, stage: stri
 
 export const setSampleQuality = (token: string | undefined, sampleId: string, quality: string) =>
   api<OrderDto>(token, `/api/orders/samples/${sampleId}/quality`, { method: "POST", body: JSON.stringify({ quality }) });
+
+/** Từ chối mẫu (QC không đạt): lý do bắt buộc + ảnh bằng chứng (tùy chọn, multipart). */
+export async function rejectSample(
+  token: string | undefined, sampleId: string, reason: string, file?: File | null,
+): Promise<OrderDto> {
+  const fd = new FormData();
+  fd.append("reason", reason);
+  if (file) fd.append("file", file);
+  const res = await fetch(`${API_BASE}/api/orders/samples/${sampleId}/reject`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  if (!res.ok) {
+    let msg = `Lỗi ${res.status}`;
+    try { msg = (await res.json()).message ?? msg; } catch { /* ignore */ }
+    throw new ApiError(res.status, msg);
+  }
+  return res.json();
+}
+
+/** Lấy ảnh bằng chứng QC (blob URL để xem inline). Nhớ revoke khi đóng. */
+export async function fetchQcEvidenceBlob(
+  token: string | undefined, sampleId: string,
+): Promise<{ url: string; type: string }> {
+  const res = await fetch(`${API_BASE}/api/orders/samples/${sampleId}/qc-evidence`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, `Không xem được ảnh (${res.status})`);
+  const blob = await res.blob();
+  return { url: URL.createObjectURL(blob), type: blob.type || res.headers.get("Content-Type") || "" };
+}
 
 export const setOrderProgress = (token: string | undefined, id: string, progress: ProgressDto) =>
   api<OrderDto>(token, `/api/orders/${id}/progress`, { method: "POST", body: JSON.stringify(progress) });

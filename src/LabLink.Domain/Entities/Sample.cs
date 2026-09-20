@@ -23,4 +23,15 @@ public class Sample
     public DateTimeOffset? CollectedAt { get; set; }
     public string? ReceivedBy { get; set; }
     public DateTimeOffset? ReceivedAt { get; set; }
+
+    // ----- Từ chối mẫu (QC không đạt) -----
+    /// <summary>Lý do không đạt (bắt buộc khi từ chối mẫu).</summary>
+    public string? QcReason { get; set; }
+    public string? QcRejectedBy { get; set; }
+    public DateTimeOffset? QcRejectedAt { get; set; }
+
+    /// <summary>Ảnh bằng chứng (tùy chọn) — lưu bytea; production nên chuyển object storage.</summary>
+    public byte[]? QcEvidence { get; set; }
+    public string? QcEvidenceType { get; set; }
+    public string? QcEvidenceName { get; set; }
 }
