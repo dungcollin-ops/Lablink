@@ -243,8 +243,8 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
             <Row label="Giới tính" value={o.patient.gender} />
             <Row label="Điện thoại" value={o.patient.phone} />
             <Row label="Email" value={o.patient.email} />
-            <Row label="CCCD" value={o.patient.nationalId} />
-            <Row label="BHYT" value={o.patient.bhyt} />
+            <Row label="Số CCCD" value={o.patient.nationalId} />
+            <Row label="Số thẻ BHYT" value={o.patient.bhyt} />
             <Row label="Địa chỉ" value={o.patient.address} />
           </div>
 
@@ -317,8 +317,8 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
             <FieldSel label="Giới tính" v={pf.gender} on={(x) => setP("gender", x)} opts={[["", "—"], ["Nam", "Nam"], ["Nữ", "Nữ"]]} />
             <Field label="Điện thoại" v={pf.phone} on={(x) => setP("phone", x)} />
             <Field label="Email" v={pf.email} on={(x) => setP("email", x)} />
-            <Field label="CCCD" v={pf.nationalId} on={(x) => setP("nationalId", x)} />
-            <Field label="BHYT" v={pf.bhyt} on={(x) => setP("bhyt", x)} />
+            <Field label="Số CCCD" v={pf.nationalId} on={(x) => setP("nationalId", x)} />
+            <Field label="Số thẻ BHYT" v={pf.bhyt} on={(x) => setP("bhyt", x)} />
             <Field label="Địa chỉ" v={pf.address} on={(x) => setP("address", x)} />
           </div>
 

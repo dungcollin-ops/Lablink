@@ -359,11 +359,11 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                 {emailErr && <span className={s.errText}>Email không hợp lệ</span>}
               </div>
               <div className={s.field}>
-                <label className={s.label}>CCCD</label>
+                <label className={s.label}>Số CCCD</label>
                 <input className={s.input} value={patient.nationalId} onChange={(e) => set("nationalId", e.target.value)} />
               </div>
               <div className={s.field}>
-                <label className={s.label}>BHYT</label>
+                <label className={s.label}>Số thẻ BHYT</label>
                 <input className={s.input} value={patient.bhyt} onChange={(e) => set("bhyt", e.target.value)} />
               </div>
               <div className={`${s.field} ${s.span2}`}>
