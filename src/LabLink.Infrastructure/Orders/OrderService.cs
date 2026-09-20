@@ -366,7 +366,7 @@ public partial class OrderService : IOrderService
 
     public async Task<OrderResult> SetStageAsync(Guid orderId, string stage, Guid actorId, string? by = null, CancellationToken ct = default)
     {
-        var order = await _db.Orders.Include(o => o.Department).FirstOrDefaultAsync(o => o.Id == orderId, ct);
+        var order = await _db.Orders.Include(o => o.Department).Include(o => o.Samples).FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return OrderResult.Fail("Không tìm thấy phiếu.");
 
         var who = string.IsNullOrWhiteSpace(by) ? null : by.Trim();
@@ -415,6 +415,9 @@ public partial class OrderService : IOrderService
                 // ETA "trả KQ" tính từ lúc nhận mẫu, theo giờ làm việc (bỏ khung nghỉ 21:30–06:30).
                 if (order.EtaMaxHours is int mx && mx > 0) order.ExpectedResultAt = AddWorkingHours(now, mx);
                 order.Stage = OrderStage.Received;
+                // Nhận mẫu ⇒ mẫu Đạt luôn (mẫu chưa đánh giá). Mẫu không đạt đã bị từ chối trước đó.
+                foreach (var sm in order.Samples.Where(s => s.Quality == SampleQuality.Unset))
+                    sm.Quality = SampleQuality.Pass;
                 await Finish(OrderStage.Received, who != null ? $"Người nhận: {who}" : null, $"{order.OrderNo} → Nhận mẫu");
                 break;
 
