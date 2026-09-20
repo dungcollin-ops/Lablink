@@ -42,9 +42,15 @@ public static class DbSeeder
         }
         await db.SaveChangesAsync(ct);
 
-        // 2b) Prune quyền đã gỡ khỏi role mặc định (seeder ở trên chỉ THÊM, không gỡ).
-        //     NV gom mẫu không còn quyền in SID — in chỉ ở lúc lấy mẫu & KTV nhận mẫu.
-        await PruneRolePermissionAsync(db, permByKey, "fastlab_gather", Permissions.SidPrint, ct);
+        // 2b) Prune quyền đã gỡ khỏi role mặc định — chạy MỘT LẦN (đánh dấu qua bảng sequences).
+        //     NV gom mẫu không còn quyền in SID theo mặc định; sau lần này admin toàn quyền chỉnh qua UI.
+        const string pruneFlag = "PRUNE:gather:sid.print";
+        if (!await db.Sequences.AnyAsync(x => x.Key == pruneFlag, ct))
+        {
+            await PruneRolePermissionAsync(db, permByKey, "fastlab_gather", Permissions.SidPrint, ct);
+            db.Sequences.Add(new SequenceCounter { Key = pruneFlag, NextSeq = 1 });
+            await db.SaveChangesAsync(ct);
+        }
 
         // 3) Demo users (dev/test) — bỏ qua nếu Seed:DemoUsers = false
         if (!seedDemoUsers) return;
