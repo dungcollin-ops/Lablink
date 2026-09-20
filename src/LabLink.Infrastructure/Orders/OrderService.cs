@@ -450,6 +450,30 @@ public partial class OrderService : IOrderService
             UserId = actorId, Action = "sample.qc",
             ObjectType = "Sample", ObjectId = sample.Id.ToString(), Detail = $"{sample.Sid} · {q}",
         });
+
+        // Đánh giá chất lượng ⇒ mẫu đã về tay KTV → tự động "Nhận mẫu" nếu phiếu mới ở bước Đã gom.
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == sample.OrderId, ct);
+        if (order is not null && order.Stage == OrderStage.Gathered)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var actorName = await ActorNameAsync(actorId, ct);
+            order.ReceiveAt = now;
+            order.ReceiveBy ??= actorName;
+            if (order.EtaMaxHours is int mx && mx > 0) order.ExpectedResultAt = AddWorkingHours(now, mx);
+            order.Stage = OrderStage.Received;
+            order.UpdatedAt = now;
+            _db.OrderEvents.Add(new OrderEvent
+            {
+                OrderId = order.Id, Step = OrderStage.Received, ActorId = actorId, ActorName = actorName,
+                At = now, Note = "Tự nhận mẫu khi đánh giá chất lượng",
+            });
+            _db.AuditLogs.Add(new AuditLog
+            {
+                UserId = actorId, Action = "order.receive",
+                ObjectType = "Order", ObjectId = order.Id.ToString(), Detail = $"{order.OrderNo} → Nhận mẫu (qua QC)",
+            });
+        }
+
         await _db.SaveChangesAsync(ct);
         return OrderResult.Success(await GetTracked(sample.OrderId, ct));
     }

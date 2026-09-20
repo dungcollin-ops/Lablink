@@ -109,6 +109,7 @@ export default function LabOrders({ session }: { session: Session }) {
     try {
       const updated = await setSampleQuality(token, sampleId, quality);
       setDetail(updated);
+      reloadList(); // QC có thể đã tự chuyển "Đã nhận mẫu" → cập nhật badge dòng
     } finally { setBusy(false); }
   }
   async function onUpload(orderId: string, file: File) {
