@@ -188,7 +188,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const estTotal = cart.reduce((sum, x) => sum + effPrice(x.labTestId, x.listPrice) * x.qty, 0);
 
   const phoneDigits = patient.phone.replace(/\D/g, "").length;
-  const phoneOdd = phoneDigits === 9 || phoneDigits === 11; // lệch 1 số so với 10 → nghi sai
+  const phoneInvalid = phoneDigits > 0 && phoneDigits !== 9 && phoneDigits !== 11; // hợp lệ = 9 hoặc 11 số
 
   async function submit(skipPhoneCheck = false) {
     setError("");
@@ -200,8 +200,8 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
       setEmailErr(true);
       return setError("Email không hợp lệ — ví dụ: ten@benhvien.vn");
     }
-    // Cảnh báo mềm SĐT 9/11 số — cho phép bỏ qua nếu người dùng chắc chắn.
-    if (!skipPhoneCheck && phoneOdd) { setPhoneWarn(true); return; }
+    // Cảnh báo mềm: SĐT hợp lệ có 9 hoặc 11 số — cho phép bỏ qua nếu người dùng chắc chắn.
+    if (!skipPhoneCheck && phoneInvalid) { setPhoneWarn(true); return; }
     setBusy(true);
     try {
       const order = await createOrder(token, {
@@ -515,7 +515,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
           }
         >
           <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-            Số điện thoại vừa nhập có <b>{phoneDigits} số</b> — số điện thoại thường có <b>10 số</b>.
+            Số điện thoại hợp lệ phải có <b>9 hoặc 11 số</b>. Số bạn nhập có <b>{phoneDigits} số</b>.
             <br />
             Bạn có chắc số <b>{patient.phone}</b> là đúng không?
           </div>
