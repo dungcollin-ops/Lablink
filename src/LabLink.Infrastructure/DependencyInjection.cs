@@ -25,6 +25,13 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.Section));
 
+        // Lưu file (kết quả XN, ảnh QC) ra đĩa VPS. Storage:Path cấu hình được;
+        // mặc định {thư mục chạy}/storage.
+        var storageRoot = config["Storage:Path"];
+        if (string.IsNullOrWhiteSpace(storageRoot))
+            storageRoot = Path.Combine(AppContext.BaseDirectory, "storage");
+        services.AddSingleton<Application.Storage.IFileStorage>(new Storage.LocalFileStorage(storageRoot));
+
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();

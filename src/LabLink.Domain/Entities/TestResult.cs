@@ -12,8 +12,11 @@ public class TestResult
     public string FileName { get; set; } = "";
     public string ContentType { get; set; } = "application/pdf";
 
-    /// <summary>Nội dung file (bytea). Bản production lớn nên chuyển sang object storage.</summary>
-    public byte[] Content { get; set; } = Array.Empty<byte>();
+    /// <summary>Đường dẫn file trên đĩa VPS (key tương đối). Bản mới lưu ở đây.</summary>
+    public string? StorageKey { get; set; }
+
+    /// <summary>Nội dung file (bytea) — CHỈ còn cho dữ liệu cũ; bản mới lưu ra đĩa qua StorageKey.</summary>
+    public byte[]? Content { get; set; }
 
     public long Size { get; set; }
 

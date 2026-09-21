@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using LabLink.Application.Orders;
+using LabLink.Application.Storage;
 using LabLink.Domain.Entities;
 using LabLink.Infrastructure.Deals;
 using LabLink.Domain.Enums;
@@ -12,11 +13,13 @@ public partial class OrderService : IOrderService
 {
     private readonly AppDbContext _db;
     private readonly ISequenceService _seq;
+    private readonly IFileStorage _files;
 
-    public OrderService(AppDbContext db, ISequenceService seq)
+    public OrderService(AppDbContext db, ISequenceService seq, IFileStorage files)
     {
         _db = db;
         _seq = seq;
+        _files = files;
     }
 
     [GeneratedRegex(@"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$")]
@@ -499,7 +502,9 @@ public partial class OrderService : IOrderService
         sample.QcRejectedAt = now;
         if (content is { Length: > 0 })
         {
-            sample.QcEvidence = content;
+            if (sample.QcEvidenceKey is { } oldKey) _files.Delete(oldKey);
+            sample.QcEvidenceKey = await _files.SaveAsync("qc", fileName ?? "bangchung", content, ct);
+            sample.QcEvidence = null;
             sample.QcEvidenceType = contentType;
             sample.QcEvidenceName = fileName;
         }
@@ -533,8 +538,10 @@ public partial class OrderService : IOrderService
     public async Task<ResultFile?> GetQcEvidenceAsync(Guid sampleId, CancellationToken ct = default)
     {
         var s = await _db.Samples.FirstOrDefaultAsync(x => x.Id == sampleId, ct);
-        if (s?.QcEvidence is null || s.QcEvidence.Length == 0) return null;
-        return new ResultFile(s.QcEvidenceName ?? "bangchung", s.QcEvidenceType ?? "application/octet-stream", s.QcEvidence);
+        if (s is null) return null;
+        var bytes = s.QcEvidenceKey is { } key ? await _files.ReadAsync(key, ct) : s.QcEvidence;
+        if (bytes is null || bytes.Length == 0) return null;
+        return new ResultFile(s.QcEvidenceName ?? "bangchung", s.QcEvidenceType ?? "application/octet-stream", bytes);
     }
 
     public async Task<OrderResult> UploadResultAsync(
@@ -551,7 +558,10 @@ public partial class OrderService : IOrderService
         }
         order.Result.FileName = fileName;
         order.Result.ContentType = string.IsNullOrWhiteSpace(contentType) ? "application/pdf" : contentType;
-        order.Result.Content = content;
+        // Lưu file ra đĩa VPS; xoá file cũ nếu cập nhật; không giữ bytea nữa.
+        if (order.Result.StorageKey is { } oldKey) _files.Delete(oldKey);
+        order.Result.StorageKey = await _files.SaveAsync("results", fileName, content, ct);
+        order.Result.Content = null;
         order.Result.Size = content.Length;
         order.Result.UploadedById = actorId;
         order.Result.UploadedAt = DateTimeOffset.UtcNow;
@@ -584,7 +594,11 @@ public partial class OrderService : IOrderService
         });
         await _db.SaveChangesAsync(ct);
 
-        return new ResultFile(order.Result.FileName, order.Result.ContentType, order.Result.Content);
+        var bytes = order.Result.StorageKey is { } key
+            ? await _files.ReadAsync(key, ct)
+            : order.Result.Content;   // fallback dữ liệu cũ (bytea)
+        if (bytes is null) return null;
+        return new ResultFile(order.Result.FileName, order.Result.ContentType, bytes);
     }
 
     public async Task<OrderResult> SetProgressAsync(Guid orderId, SetProgressRequest r, Guid actorId, CancellationToken ct = default)
@@ -704,7 +718,7 @@ public partial class OrderService : IOrderService
             i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
             s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString(),
-            s.QcReason, s.QcRejectedAt, s.QcEvidence != null)).ToList(),
+            s.QcReason, s.QcRejectedAt, s.QcEvidence != null || s.QcEvidenceKey != null)).ToList(),
         resultFileName != null, resultFileName,
         new ProgressDto(
             o.CollectPlace, o.CollectBy, o.CollectAt,
@@ -724,7 +738,7 @@ public partial class OrderService : IOrderService
             i.Id, i.LabTestId, i.TestCode, i.TestName, i.SampleType, i.Qty, i.UnitPrice)).ToList(),
         o.Samples.OrderBy(s => s.Sid).Select(s => new SampleDto(
             s.Id, s.Sid, s.SampleType, s.TubeType, s.Quality.ToString(),
-            s.QcReason, s.QcRejectedAt, s.QcEvidence != null)).ToList(),
+            s.QcReason, s.QcRejectedAt, s.QcEvidence != null || s.QcEvidenceKey != null)).ToList(),
         o.Events.OrderBy(ev => ev.At).Select(ev => new OrderEventDto(
             ev.Step.ToString(), ev.ActorName, ev.At, ev.Note)).ToList(),
         resultFileName != null, resultFileName,

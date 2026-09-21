@@ -30,7 +30,8 @@ public class Sample
     public string? QcRejectedBy { get; set; }
     public DateTimeOffset? QcRejectedAt { get; set; }
 
-    /// <summary>Ảnh bằng chứng (tùy chọn) — lưu bytea; production nên chuyển object storage.</summary>
+    /// <summary>Ảnh bằng chứng (tùy chọn). Bản mới lưu ra đĩa qua QcEvidenceKey; QcEvidence(bytea) chỉ cho dữ liệu cũ.</summary>
+    public string? QcEvidenceKey { get; set; }
     public byte[]? QcEvidence { get; set; }
     public string? QcEvidenceType { get; set; }
     public string? QcEvidenceName { get; set; }
