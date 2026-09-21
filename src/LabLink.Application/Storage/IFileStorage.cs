@@ -4,9 +4,9 @@ namespace LabLink.Application.Storage;
 /// Bản hiện tại: đĩa cục bộ trên VPS. DB chỉ giữ "key" (đường dẫn tương đối).</summary>
 public interface IFileStorage
 {
-    /// <summary>Lưu file vào nhóm <paramref name="category"/> (vd "results", "qc"),
-    /// trả về key tương đối để lưu vào DB.</summary>
-    Task<string> SaveAsync(string category, string originalFileName, byte[] content, CancellationToken ct = default);
+    /// <summary>Lưu file vào nhóm <paramref name="category"/> (vd "results", "qc") với
+    /// tên <paramref name="name"/> (vd số phiếu "O-123", SID) — trả về key tương đối để lưu DB.</summary>
+    Task<string> SaveAsync(string category, string name, string originalFileName, byte[] content, CancellationToken ct = default);
 
     /// <summary>Đọc file theo key. Null nếu không tồn tại.</summary>
     Task<byte[]?> ReadAsync(string key, CancellationToken ct = default);

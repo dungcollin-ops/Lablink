@@ -503,7 +503,7 @@ public partial class OrderService : IOrderService
         if (content is { Length: > 0 })
         {
             if (sample.QcEvidenceKey is { } oldKey) _files.Delete(oldKey);
-            sample.QcEvidenceKey = await _files.SaveAsync("qc", fileName ?? "bangchung", content, ct);
+            sample.QcEvidenceKey = await _files.SaveAsync("qc", sample.Sid, fileName ?? "bangchung", content, ct);
             sample.QcEvidence = null;
             sample.QcEvidenceType = contentType;
             sample.QcEvidenceName = fileName;
@@ -560,7 +560,7 @@ public partial class OrderService : IOrderService
         order.Result.ContentType = string.IsNullOrWhiteSpace(contentType) ? "application/pdf" : contentType;
         // Lưu file ra đĩa VPS; xoá file cũ nếu cập nhật; không giữ bytea nữa.
         if (order.Result.StorageKey is { } oldKey) _files.Delete(oldKey);
-        order.Result.StorageKey = await _files.SaveAsync("results", fileName, content, ct);
+        order.Result.StorageKey = await _files.SaveAsync("results", order.OrderNo, fileName, content, ct);
         order.Result.Content = null;
         order.Result.Size = content.Length;
         order.Result.UploadedById = actorId;

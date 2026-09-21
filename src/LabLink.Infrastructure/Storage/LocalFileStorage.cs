@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using LabLink.Application.Storage;
 
 namespace LabLink.Infrastructure.Storage;
@@ -16,10 +17,12 @@ public class LocalFileStorage : IFileStorage
 
     private string FullPath(string key) => Path.Combine(_root, key.Replace('/', Path.DirectorySeparatorChar));
 
-    public async Task<string> SaveAsync(string category, string originalFileName, byte[] content, CancellationToken ct = default)
+    public async Task<string> SaveAsync(string category, string name, string originalFileName, byte[] content, CancellationToken ct = default)
     {
         var ext = Path.GetExtension(originalFileName ?? "");
-        var key = $"{category}/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}{ext}";
+        // Tên = số phiếu / SID (đã duy nhất). Chỉ lọc ký tự không an toàn cho tên file.
+        var safe = Regex.Replace(string.IsNullOrWhiteSpace(name) ? "file" : name, @"[^A-Za-z0-9._-]", "_");
+        var key = $"{category}/{safe}{ext}";
         var full = FullPath(key);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         await File.WriteAllBytesAsync(full, content, ct);
