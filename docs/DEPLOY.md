@@ -214,3 +214,17 @@ Sau khi xong, **chỉ truy cập qua `https://<ten-mien>`** (IP:8080 không còn
 | Không cấp được chứng chỉ | Kiểm tra DNS (nslookup) + firewall cloud mở 80/443 |
 
 App đã bật `UseForwardedHeaders` (chỉ tin proxy loopback) nên nhận đúng IP client và scheme https từ Caddy.
+
+---
+
+## H. Quên mật khẩu admin (lệnh khẩn cấp)
+
+Chạy trên máy có quyền truy cập DB (máy DEV có user-secrets, hoặc VPS). Mật khẩu nhập ẩn ngay trên terminal,
+không đi qua mạng, không vào lịch sử shell; có ghi audit `user.reset_password` (cli).
+
+```powershell
+cd "C:\Project Claude\LabLink"
+dotnet run --project src/LabLink.Api -- reset-password admin      # hoặc email / tên tài khoản khác
+```
+
+Nếu API local đang chạy thì tắt trước (tránh khoá file khi build).

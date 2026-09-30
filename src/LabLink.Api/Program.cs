@@ -1,4 +1,5 @@
 using System.Text;
+using LabLink.Api;
 using LabLink.Api.Authorization;
 using LabLink.Application.Auth;
 using LabLink.Infrastructure;
@@ -68,6 +69,15 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await DbSeeder.SeedAsync(db, hasher, seedDemo);
     await CatalogSeeder.SeedAsync(db);
+}
+
+// Lệnh khẩn cấp (break-glass) — đặt lại mật khẩu khi mất quyền admin, KHÔNG khởi động web:
+//   dotnet run --project src/LabLink.Api -- reset-password <tên-tài-khoản-hoặc-email>
+// Mật khẩu nhập ẩn ngay trên terminal, chỉ người có quyền truy cập máy + DB mới chạy được.
+if (args.Length >= 2 && args[0] == "reset-password")
+{
+    await ResetPasswordCli.RunAsync(app.Services, args[1]);
+    return;
 }
 
 // Chạy sau Caddy (reverse proxy HTTPS trên cùng máy): lấy đúng IP client + scheme https
