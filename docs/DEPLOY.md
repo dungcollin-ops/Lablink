@@ -91,19 +91,16 @@ Lần đầu khởi động, app **tự tạo bảng (migration) + seed danh m�
 
 ## C. Bảo mật trước khi cho dùng thật
 
-1. **Đổi mật khẩu** tất cả tài khoản demo (Quản trị người dùng → Đặt lại MK), hoặc tạo admin thật rồi khoá demo.
-2. Muốn **không tạo user demo** ở lần deploy sau: đặt thêm biến
-   `Seed__DemoUsers = false` (giữ `true` ở lần đầu để có admin đăng nhập).
-3. **HTTPS** (khuyến nghị cho dữ liệu y tế + JWT):
-   - Đặt **IIS** hoặc **Caddy/nginx** làm reverse proxy trước Kestrel (cổng 443, gắn chứng chỉ), **hoặc**
-   - Cho Kestrel bind HTTPS bằng chứng chỉ `.pfx`:
-     ```powershell
-     [Environment]::SetEnvironmentVariable("ASPNETCORE_URLS","https://0.0.0.0:8443","Machine")
-     [Environment]::SetEnvironmentVariable("ASPNETCORE_Kestrel__Certificates__Default__Path","C:\LabLink\cert.pfx","Machine")
-     [Environment]::SetEnvironmentVariable("ASPNETCORE_Kestrel__Certificates__Default__Password","<pfx-pass>","Machine")
-     ```
-   - Nếu chỉ chạy nội bộ qua VPN, HTTP tạm chấp nhận cho bản dùng thử.
-4. **Dữ liệu bệnh nhân thật**: KHÔNG đưa lên Supabase free (dữ liệu ra cloud + tự pause). Bản chạy thật nên dùng **Supabase trả phí** hoặc **PostgreSQL on-premise** (chỉ đổi `ConnectionStrings__Default`, code không đổi).
+1. **Đổi mật khẩu** tất cả tài khoản demo (Quản trị người dùng → Đặt lại MK, tối thiểu 8 ký tự), hoặc tạo admin thật rồi khoá demo.
+2. Production mặc định **không tạo user demo** (`Seed:DemoUsers = false` trong `appsettings.Production.json`);
+   khung "Tài khoản demo" ở màn đăng nhập chỉ hiện khi chạy dev.
+3. **HTTPS + tên miền** — xem mục **G** (Caddy + Let's Encrypt, chạy 1 lần bằng `setup-https.ps1`).
+4. **Giới hạn cổng quản trị**: WinRM 5985 (dùng để deploy) và RDP 3389 chỉ nên cho IP quản trị truy cập
+   (IP nhà mạng thay đổi thì phải cập nhật lại, cẩn thận tự khoá mình ra ngoài):
+   ```powershell
+   Set-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -RemoteAddress <IP-cua-anh>
+   ```
+5. **Dữ liệu bệnh nhân thật**: KHÔNG đưa lên Supabase free (dữ liệu ra cloud + tự pause). Bản chạy thật nên dùng **Supabase trả phí** hoặc **PostgreSQL on-premise** (chỉ đổi `ConnectionStrings__Default`, code không đổi).
 
 ---
 
@@ -175,3 +172,45 @@ cd "C:\Project Claude\LabLink"
 
 ### Nâng cao (nếu cần CI/CD thật)
 Muốn **push git là tự deploy**: dùng **GitHub Actions** với một **self-hosted runner** cài trên VPS (runner tự có quyền chạy `Stop/Start-Service` + copy local), hoặc runner trên cloud + OpenSSH tới VPS. Khi cần dựng, báo để làm workflow `.github/workflows/deploy.yml` theo hướng này.
+
+---
+
+## G. HTTPS + tên miền (Caddy + Let's Encrypt) — `setup-https.ps1`
+
+Sơ đồ sau khi cài:
+
+```
+Trình duyệt ──https :443──► Caddy (service "caddy") ──http://localhost:8080──► LabLink.Api
+                             ▲ Let's Encrypt tự cấp + tự gia hạn chứng chỉ (miễn phí)
+```
+
+**Chuẩn bị (1 lần):**
+1. Mua tên miền, vào trang quản lý DNS của nhà đăng ký, tạo bản ghi **A**:
+   Host `@` (hoặc `lablink` nếu dùng subdomain) → `223.130.11.116`, TTL 300.
+2. Chờ vài phút rồi kiểm tra: `nslookup <ten-mien>` phải ra `223.130.11.116`.
+3. Firewall **của nhà cung cấp VPS** (cấp cloud): mở inbound TCP **80** và **443**; đóng **8080**.
+
+**Chạy (PowerShell Administrator trên máy DEV):**
+```powershell
+cd "C:\Project Claude\LabLink"; Set-ExecutionPolicy -Scope Process Bypass -Force
+.\setup-https.ps1 -VpsHost 223.130.11.116 -User "223.130.11.116\Administrator" -Domain <ten-mien> -Email <email-nhan-canh-bao>
+```
+
+Script làm trên VPS:
+- Tải Caddy chính thức về `C:\caddy`, sinh `C:\caddy\Caddyfile` (reverse proxy + header bảo mật: HSTS, nosniff, SAMEORIGIN; giới hạn upload 25MB).
+- Kiểm tra cổng 80/443 trống (nếu IIS đang chiếm: `Stop-Service W3SVC; Set-Service W3SVC -StartupType Disabled`).
+- Mở firewall Windows 80/443, **xoá rule 8080**.
+- Service LabLink chỉ nghe `localhost:8080` (thêm `--urls` vào service → không cần reboot).
+- Tạo + chạy service `caddy`, rồi chờ cấp chứng chỉ và thử `https://<ten-mien>`.
+
+Sau khi xong, **chỉ truy cập qua `https://<ten-mien>`** (IP:8080 không còn vào được từ ngoài). `deploy-vps.ps1` vẫn dùng bình thường.
+
+**Vận hành / sự cố:**
+| Việc | Lệnh trên VPS |
+|---|---|
+| Xem log Caddy | `Get-Content C:\caddy\caddy.log -Tail 30` |
+| Khởi động lại Caddy (sau khi sửa Caddyfile) | `Restart-Service caddy` |
+| Kiểm tra cú pháp Caddyfile | `C:\caddy\caddy.exe validate --config C:\caddy\Caddyfile` |
+| Không cấp được chứng chỉ | Kiểm tra DNS (nslookup) + firewall cloud mở 80/443 |
+
+App đã bật `UseForwardedHeaders` (chỉ tin proxy loopback) nên nhận đúng IP client và scheme https từ Caddy.

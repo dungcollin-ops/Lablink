@@ -1,4 +1,4 @@
-# deploy-vps.ps1 — Build + release LabLink lên VPS Windows TỰ ĐỘNG (1 lệnh).
+﻿# deploy-vps.ps1 — Build + release LabLink lên VPS Windows TỰ ĐỘNG (1 lệnh).
 # Dùng PowerShell Remoting (WinRM). Xem phần "Chuẩn bị 1 lần" trong DEPLOY.md.
 #
 # Ví dụ:  .\deploy-vps.ps1 -VpsHost 123.45.67.89
@@ -88,7 +88,7 @@ try {
   Write-Host ("  Bản build: {0}" -f $result.Build)
   if ($result.Created) { Write-Host "  (Đã tạo mới service LabLink)" -ForegroundColor Yellow }
   Write-Host ""
-  Write-Host "Xong. Kiểm tra: http://$VpsHost:8080" -ForegroundColor Green
+  Write-Host "Xong. Kiểm tra: https://<ten-mien> (hoặc http://${VpsHost}:8080 nếu chưa cài HTTPS)" -ForegroundColor Green
 }
 finally {
   Remove-PSSession $s

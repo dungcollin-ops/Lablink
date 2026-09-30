@@ -58,8 +58,8 @@ public class UserAdminService : IUserAdminService
         var email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(accountName))
             return (AdminResult.Fail("Thiếu tên tài khoản."), null);
-        if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 4)
-            return (AdminResult.Fail("Mật khẩu tối thiểu 4 ký tự."), null);
+        if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
+            return (AdminResult.Fail("Mật khẩu tối thiểu 8 ký tự."), null);
         if (await _db.Users.AnyAsync(u => u.AccountName == accountName, ct))
             return (AdminResult.Fail("Tên tài khoản đã tồn tại."), null);
         if (email is not null && await _db.Users.AnyAsync(u => u.Email == email, ct))
@@ -155,8 +155,8 @@ public class UserAdminService : IUserAdminService
 
     public async Task<AdminResult> ResetPasswordAsync(Guid id, ResetPasswordRequest req, Guid actorId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 4)
-            return AdminResult.Fail("Mật khẩu tối thiểu 4 ký tự.");
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 8)
+            return AdminResult.Fail("Mật khẩu tối thiểu 8 ký tự.");
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user is null) return AdminResult.Fail("Không tìm thấy người dùng.");
 

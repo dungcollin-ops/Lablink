@@ -1,4 +1,4 @@
-# build.ps1 — Đóng gói LabLink để deploy (chạy trên máy DEV có Node + .NET SDK)
+﻿# build.ps1 — Đóng gói LabLink để deploy (chạy trên máy DEV có Node + .NET SDK)
 # Kết quả: thư mục .\publish chứa API + SPA (đã gộp), copy nguyên sang VPS.
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot

@@ -6,6 +6,7 @@ using LabLink.Infrastructure.Auth;
 using LabLink.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -68,6 +69,13 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db, hasher, seedDemo);
     await CatalogSeeder.SeedAsync(db);
 }
+
+// Chạy sau Caddy (reverse proxy HTTPS trên cùng máy): lấy đúng IP client + scheme https
+// từ X-Forwarded-*. Mặc định chỉ tin proxy loopback (127.0.0.1/::1) → không bị giả mạo header.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+});
 
 if (app.Environment.IsDevelopment())
 {
