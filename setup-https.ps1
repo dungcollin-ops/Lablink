@@ -11,13 +11,16 @@
 #   - Tạo + chạy service "caddy" (tự lấy/gia hạn chứng chỉ, tự chuyển http → https).
 #
 # Ví dụ (PowerShell Administrator):
-#   .\setup-https.ps1 -VpsHost 223.130.11.116 -User "223.130.11.116\Administrator" -Domain lablink.vn -Email ban@congty.vn
+#   .\setup-https.ps1 -VpsHost 223.130.11.116 -User "223.130.11.116\Administrator" -Domain lablink.vn
+#   (SSL miễn phí từ Let's Encrypt — không cần mua chứng chỉ, Caddy tự gia hạn.)
 
 param(
   [Parameter(Mandatory = $true)][string]$VpsHost,
   [string]$User = "Administrator",
   [Parameter(Mandatory = $true)][string]$Domain,
-  [Parameter(Mandatory = $true)][string]$Email   # Let's Encrypt gửi cảnh báo hết hạn về đây
+  # Tuỳ chọn: email liên hệ gắn với tài khoản ACME. Let's Encrypt đã ngừng gửi email báo hết hạn (2025);
+  # Caddy tự gia hạn chứng chỉ nên không bắt buộc.
+  [string]$Email = ""
 )
 $ErrorActionPreference = "Stop"
 function Step($m) { Write-Host "== $m ==" -ForegroundColor Cyan }
@@ -50,9 +53,10 @@ try {
     }
 
     # Caddyfile: reverse proxy tới LabLink + header bảo mật. Giới hạn body 25MB (app cho upload 20MB).
+    $emailLine = if ($email) { "email $email" } else { "" }
     $caddyfile = @"
 {
-    email $email
+    $emailLine
     log {
         output file C:/caddy/caddy.log
     }

@@ -193,7 +193,7 @@ Trình duyệt ──https :443──► Caddy (service "caddy") ──http://lo
 **Chạy (PowerShell Administrator trên máy DEV):**
 ```powershell
 cd "C:\Project Claude\LabLink"; Set-ExecutionPolicy -Scope Process Bypass -Force
-.\setup-https.ps1 -VpsHost 223.130.11.116 -User "223.130.11.116\Administrator" -Domain <ten-mien> -Email <email-nhan-canh-bao>
+.\setup-https.ps1 -VpsHost 223.130.11.116 -User "223.130.11.116\Administrator" -Domain <ten-mien>
 ```
 
 Script làm trên VPS:
