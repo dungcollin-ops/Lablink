@@ -178,12 +178,13 @@ export const SORT_OPTIONS: { key: SortMode; label: string }[] = [
   { key: "newest", label: "Mới nhất" },
 ];
 type SortRow = OrderRowLike & { orderNo: string };
-/** Mã phiếu "yyMMdd###" (vd 261006001): so 6 số ngày trước, rồi số thứ tự trong ngày
- *  (ngày > 999 phiếu thì phần thứ tự dài 4 số — so số học nên vẫn đúng thứ tự). */
+/** Mã phiếu "P" + yyMMdd### (vd P261006001): bỏ tiền tố chữ, so 6 số ngày trước rồi số thứ tự
+ *  trong ngày (ngày > 999 phiếu thì phần thứ tự dài 4 số — so số học nên vẫn đúng thứ tự). */
 const orderNoCompare = (a: string, b: string): number => {
-  const da = (a || "").slice(0, 6), db = (b || "").slice(0, 6);
+  const na = (a || "").replace(/^\D+/, ""), nb = (b || "").replace(/^\D+/, "");
+  const da = na.slice(0, 6), db = nb.slice(0, 6);
   if (da !== db) return da < db ? -1 : 1;
-  return (parseInt((a || "").slice(6), 10) || 0) - (parseInt((b || "").slice(6), 10) || 0);
+  return (parseInt(na.slice(6), 10) || 0) - (parseInt(nb.slice(6), 10) || 0);
 };
 /** Trả comparator theo kiểu sort đang chọn (dùng với Array.sort). */
 export function orderCompare(mode: SortMode): (a: SortRow, b: SortRow) => number {

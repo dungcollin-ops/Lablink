@@ -127,12 +127,12 @@ public partial class OrderService : IOrderService
         // ---- Gom mẫu + sinh SID atomic (1 loại mẫu = 1 SID). Sinh ngay khi tạo phiếu. ----
         var samples = await BuildSamplesWithSidAsync(items.Select(x => x.SampleType), ct);
 
-        // ---- Mã phiếu: yyMMdd### vd 261006001 (đếm lại mỗi ngày theo giờ VN; >999 tự thành 4 số) ----
+        // ---- Mã phiếu: P + yyMMdd### vd P261006001 (đếm lại mỗi ngày theo giờ VN; >999 tự thành 4 số) ----
         var vnNow = VnNow();
         var orderSeq = await _seq.NextRangeAsync($"ORDER:{vnNow:yyMMdd}", 1, ct);
         var order = new Order
         {
-            OrderNo = $"{vnNow:yyMMdd}{orderSeq:D3}",
+            OrderNo = $"P{vnNow:yyMMdd}{orderSeq:D3}",
             Source = source,
             Stage = OrderStage.Ordered,
             PatientId = patient.Id,
@@ -691,7 +691,7 @@ public partial class OrderService : IOrderService
         {
             var now = DateTime.Now;
             var seq = await _seq.NextRangeAsync($"MABN:{now:MMyy}", 1, ct);
-            maBN = $"{now:MMyy}{seq:D4}";
+            maBN = $"KH{now:MMyy}{seq:D4}"; // vd KH10260001 (KH + MMyy + số thứ tự trong tháng)
         }
 
         var patient = new Patient
