@@ -690,8 +690,8 @@ public partial class OrderService : IOrderService
         else
         {
             var now = DateTime.Now;
-            var seq = await _seq.NextRangeAsync($"MABN:{now:MMyy}", 1, ct);
-            maBN = $"KH{now:MMyy}{seq:D4}"; // vd KH10260001 (KH + MMyy + số thứ tự trong tháng)
+            var seq = await _seq.NextRangeAsync($"MABN:{now:yyMM}", 1, ct);
+            maBN = $"KH{now:yyMM}{seq:D4}"; // vd KH26100001 (KH + yyMM + số thứ tự trong tháng)
         }
 
         var patient = new Patient

@@ -5,7 +5,7 @@ public class Patient
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    /// <summary>Mã bệnh nhân "KH" + MMyy#### vd KH10260001 — tự sinh khi trống (đếm lại mỗi tháng).</summary>
+    /// <summary>Mã bệnh nhân "KH" + yyMM#### vd KH26100001 — tự sinh khi trống (đếm lại mỗi tháng).</summary>
     public string MaBN { get; set; } = "";
 
     public string FullName { get; set; } = "";
