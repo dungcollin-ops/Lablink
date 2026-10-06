@@ -127,11 +127,12 @@ public partial class OrderService : IOrderService
         // ---- Gom mẫu + sinh SID atomic (1 loại mẫu = 1 SID). Sinh ngay khi tạo phiếu. ----
         var samples = await BuildSamplesWithSidAsync(items.Select(x => x.SampleType), ct);
 
-        // ---- Mã phiếu ----
-        var orderSeq = await _seq.NextRangeAsync("ORDER", 1, ct);
+        // ---- Mã phiếu: CD-yyMMdd-#### (CD = chỉ định; đếm lại mỗi ngày theo giờ VN) ----
+        var vnNow = VnNow();
+        var orderSeq = await _seq.NextRangeAsync($"ORDER:{vnNow:yyMMdd}", 1, ct);
         var order = new Order
         {
-            OrderNo = $"O-{orderSeq}",
+            OrderNo = $"CD-{vnNow:yyMMdd}-{orderSeq:D4}",
             Source = source,
             Stage = OrderStage.Ordered,
             PatientId = patient.Id,
@@ -774,6 +775,10 @@ public partial class OrderService : IOrderService
     private static readonly TimeSpan WorkOpen = new(6, 30, 0);
     private static readonly TimeSpan WorkClose = new(21, 30, 0);
     private static readonly TimeSpan VnOffset = TimeSpan.FromHours(7);
+
+    /// <summary>Thời điểm hiện tại theo giờ Việt Nam (UTC+7) — dùng cho ngày trong mã phiếu,
+    /// không phụ thuộc múi giờ cài trên máy chủ.</summary>
+    private static DateTimeOffset VnNow() => DateTimeOffset.UtcNow.ToOffset(VnOffset);
 
     /// <summary>Cộng <paramref name="hours"/> GIỜ LÀM VIỆC vào mốc bắt đầu, bỏ qua khung nghỉ.</summary>
     private static DateTimeOffset AddWorkingHours(DateTimeOffset fromUtc, int hours)

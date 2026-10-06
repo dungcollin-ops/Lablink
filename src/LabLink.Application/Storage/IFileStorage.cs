@@ -5,7 +5,7 @@ namespace LabLink.Application.Storage;
 public interface IFileStorage
 {
     /// <summary>Lưu file vào nhóm <paramref name="category"/> (vd "results", "qc") với
-    /// tên <paramref name="name"/> (vd số phiếu "O-123", SID) — trả về key tương đối để lưu DB.</summary>
+    /// tên <paramref name="name"/> (vd số phiếu "CD-261006-0001", SID) — trả về key tương đối để lưu DB.</summary>
     Task<string> SaveAsync(string category, string name, string originalFileName, byte[] content, CancellationToken ct = default);
 
     /// <summary>Đọc file theo key. Null nếu không tồn tại.</summary>

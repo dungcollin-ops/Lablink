@@ -2,12 +2,12 @@ using LabLink.Domain.Enums;
 
 namespace LabLink.Domain.Entities;
 
-/// <summary>Phiếu chỉ định (README · Screen 3/4). Mã "O-&lt;seq&gt;".</summary>
+/// <summary>Phiếu chỉ định (README · Screen 3/4). Mã "CD-yyMMdd-####" (đếm lại theo ngày, giờ VN).</summary>
 public class Order
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    /// <summary>Mã phiếu hiển thị, vd "O-1042".</summary>
+    /// <summary>Mã phiếu hiển thị, vd "CD-261006-0001".</summary>
     public string OrderNo { get; set; } = "";
 
     public OrderSource Source { get; set; }

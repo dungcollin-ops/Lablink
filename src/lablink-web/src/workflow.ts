@@ -178,13 +178,13 @@ export const SORT_OPTIONS: { key: SortMode; label: string }[] = [
   { key: "newest", label: "Mới nhất" },
 ];
 type SortRow = OrderRowLike & { orderNo: string };
-const orderNoNum = (s: string): number => {
-  const m = /(\d+)/.exec(s || "");
-  return m ? parseInt(m[1], 10) : 0;
-};
+/** Mã phiếu "CD-yyMMdd-####" độ dài cố định → so cả chuỗi là đúng thứ tự thời gian
+ *  (numeric: true để mã đếm > 9999 trong ngày vẫn đúng). */
+const orderNoCompare = (a: string, b: string): number =>
+  (a || "").localeCompare(b || "", undefined, { numeric: true });
 /** Trả comparator theo kiểu sort đang chọn (dùng với Array.sort). */
 export function orderCompare(mode: SortMode): (a: SortRow, b: SortRow) => number {
-  if (mode === "orderNo") return (a, b) => orderNoNum(a.orderNo) - orderNoNum(b.orderNo);
+  if (mode === "orderNo") return (a, b) => orderNoCompare(a.orderNo, b.orderNo);
   if (mode === "newest") return (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   return etaCompare;
 }
