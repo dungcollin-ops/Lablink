@@ -228,3 +228,26 @@ dotnet run --project src/LabLink.Api -- reset-password admin      # hoặc email
 ```
 
 Nếu API local đang chạy thì tắt trước (tránh khoá file khi build).
+
+---
+
+## I. Dựng VPS Windows MỚI — `bootstrap-vps.ps1` (1 lần cho mỗi VPS)
+
+1. **Trên VPS (qua RDP), PowerShell Administrator** — bật WinRM, chỉ cho IP máy DEV:
+   ```powershell
+   Enable-PSRemoting -Force -SkipNetworkProfileCheck
+   Set-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -RemoteAddress <IP-may-DEV>
+   ```
+2. **Firewall nhà cung cấp VPS**: cho phép 5985 (từ IP máy DEV) và 8080.
+3. **Trên máy DEV, PowerShell Administrator**:
+   ```powershell
+   Set-Item WSMan:\localhost\Client\TrustedHosts -Value "<IP-VPS>" -Concatenate -Force
+   cd "C:\Project Claude\LabLink"; Set-ExecutionPolicy -Scope Process Bypass -Force
+   .\bootstrap-vps.ps1 -VpsHost <IP-VPS> -User "<IP-VPS>\Administrator"
+   ```
+   Cài ASP.NET Core 8 Hosting Bundle, đặt 4 biến môi trường (connection string lấy từ user-secrets,
+   khoá JWT sinh ngẫu nhiên — không in ra), mở firewall 8080, tạo `C:\LabLink-data`, rồi reboot VPS.
+4. Sau ~2 phút: `.\deploy-vps.ps1 -VpsHost <IP-VPS> -User "<IP-VPS>\Administrator" -SkipBuild`.
+
+Chuyển từ VPS cũ sang: nhớ **chép thư mục `C:\LabLink-data`** (file kết quả) từ VPS cũ sang VPS mới —
+DB dùng chung nhưng file nằm trên đĩa từng VPS.
