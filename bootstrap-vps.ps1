@@ -45,7 +45,18 @@ $jwtKey = [Convert]::ToBase64String($bytes)
 Step "2/5  Kết nối VPS $VpsHost"
 $sec = Read-Host "Mat khau Windows tren VPS ($VpsHost) cho tai khoan $User" -AsSecureString
 $cred = New-Object System.Management.Automation.PSCredential($User, $sec)
-$s = New-PSSession -ComputerName $VpsHost -Credential $cred -Authentication Negotiate
+try {
+  $s = New-PSSession -ComputerName $VpsHost -Credential $cred -Authentication Negotiate
+} catch {
+  # Hay gặp nhất: IP công khai máy DEV đã đổi, firewall WinRM trên VPS chỉ cho IP cũ.
+  $myIp = try { Invoke-RestMethod "https://api.ipify.org" -TimeoutSec 10 } catch { "(không lấy được)" }
+  Write-Host ""
+  Write-Host "Không kết nối được WinRM tới $VpsHost." -ForegroundColor Red
+  Write-Host "Nếu mạng/IP máy bạn vừa đổi (IP hiện tại: $myIp): RDP vào VPS, PowerShell Administrator, chạy:" -ForegroundColor Yellow
+  Write-Host "  Set-NetFirewallRule -DisplayName `"Windows Remote Management (HTTP-In)`" -RemoteAddress <IP-cu>,$myIp" -ForegroundColor Yellow
+  Write-Host "(Nếu lỗi là Access denied / 1312 thì do mật khẩu hoặc -User — xem DEPLOY.md.)"
+  throw
+}
 
 try {
   Step "3/5  ASP.NET Core 8 Hosting Bundle"
