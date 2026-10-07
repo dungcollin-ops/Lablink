@@ -11,8 +11,10 @@
 #   - Tạo + chạy service "caddy" (tự lấy/gia hạn chứng chỉ, tự chuyển http → https).
 #
 # Ví dụ (PowerShell Administrator):
-#   .\setup-https.ps1 -VpsHost 223.130.11.116 -User "223.130.11.116\Administrator" -Domain lablink.vn
+#   .\setup-https.ps1 -VpsHost 103.178.235.143 -User "103.178.235.143\Administrator" -Domain fastlab.vn -StopIis
 #   (SSL miễn phí từ Let's Encrypt — không cần mua chứng chỉ, Caddy tự gia hạn.)
+#   -StopIis : tắt + vô hiệu IIS (W3SVC) để nhả cổng 80/443 cho Caddy. CHỈ dùng khi IIS không chạy site nào khác.
+#   www.<ten-mien> nếu đã trỏ về VPS sẽ tự chuyển hướng về <ten-mien> (tắt bằng -NoWww).
 
 param(
   [Parameter(Mandatory = $true)][string]$VpsHost,
@@ -20,17 +22,42 @@ param(
   [Parameter(Mandatory = $true)][string]$Domain,
   # Tuỳ chọn: email liên hệ gắn với tài khoản ACME. Let's Encrypt đã ngừng gửi email báo hết hạn (2025);
   # Caddy tự gia hạn chứng chỉ nên không bắt buộc.
-  [string]$Email = ""
+  [string]$Email = "",
+  [switch]$StopIis,
+  [switch]$NoWww
 )
 $ErrorActionPreference = "Stop"
 function Step($m) { Write-Host "== $m ==" -ForegroundColor Cyan }
 
+# Phân giải tên miền: DNS của máy trước; nếu chưa ra IP VPS (máy còn nhớ kết quả cũ) thì hỏi Google DNS-over-HTTPS.
+function Resolve-Ips([string]$name) {
+  $ips = @()
+  try { $ips = @([System.Net.Dns]::GetHostAddresses($name) | ForEach-Object { $_.IPAddressToString }) } catch { }
+  if ($ips -notcontains $VpsHost) {
+    try {
+      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+      $doh = Invoke-RestMethod "https://dns.google/resolve?name=$name&type=A" -TimeoutSec 15
+      $ips = @($doh.Answer | Where-Object { $_.type -eq 1 } | ForEach-Object { $_.data })
+    } catch { }
+  }
+  return $ips
+}
+
 # 0) DNS phải trỏ đúng về VPS, nếu không Let's Encrypt sẽ từ chối cấp chứng chỉ.
 Step "0/4  Kiểm tra DNS $Domain"
-try { $ips = @([System.Net.Dns]::GetHostAddresses($Domain) | ForEach-Object { $_.IPAddressToString }) } catch { $ips = @() }
+$ips = Resolve-Ips $Domain
 if ($ips -notcontains $VpsHost) {
   Write-Host ("  {0} hiện trỏ về: {1}" -f $Domain, ($(if ($ips.Count) { $ips -join ', ' } else { '(chưa có bản ghi)' }))) -ForegroundColor Yellow
   throw "DNS chưa trỏ về $VpsHost. Tạo bản ghi A rồi chờ vài phút (kiểm tra: nslookup $Domain)."
+}
+$wwwHost = ""
+if (-not $NoWww) {
+  if ((Resolve-Ips "www.$Domain") -contains $VpsHost) {
+    $wwwHost = "www.$Domain"
+    Write-Host "  www.$Domain cũng trỏ về VPS → sẽ tự chuyển hướng về https://$Domain"
+  } else {
+    Write-Host "  www.$Domain chưa trỏ về VPS → bỏ qua (chỉ cấp chứng chỉ cho $Domain)"
+  }
 }
 
 Step "1/4  Kết nối VPS $VpsHost"
@@ -40,8 +67,8 @@ $s = New-PSSession -ComputerName $VpsHost -Credential $cred -Authentication Nego
 
 try {
   Step "2/4  Cài Caddy + cấu hình firewall + LabLink chỉ nghe localhost"
-  $result = Invoke-Command -Session $s -ArgumentList $Domain, $Email {
-    param($domain, $email)
+  $result = Invoke-Command -Session $s -ArgumentList $Domain, $Email, $wwwHost, ([bool]$StopIis) {
+    param($domain, $email, $wwwHost, $stopIis)
     $ErrorActionPreference = "Stop"
     $dir = "C:\caddy"
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -54,6 +81,8 @@ try {
 
     # Caddyfile: reverse proxy tới LabLink + header bảo mật. Giới hạn body 25MB (app cho upload 20MB).
     $emailLine = if ($email) { "email $email" } else { "" }
+    # www.<ten-mien> → chuyển hướng vĩnh viễn về <ten-mien> (Caddy cũng cấp chứng chỉ cho www).
+    $wwwBlock = if ($wwwHost) { "$wwwHost {`r`n    redir https://$domain{uri} permanent`r`n}" } else { "" }
     $caddyfile = @"
 {
     $emailLine
@@ -76,11 +105,20 @@ $domain {
         -Server
     }
 }
+
+$wwwBlock
 "@
     # ASCII (không BOM) để Caddy đọc chuẩn.
     Set-Content -Path "$dir\Caddyfile" -Value $caddyfile -Encoding ASCII
     & "$dir\caddy.exe" validate --config "$dir\Caddyfile" --adapter caddyfile 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Caddyfile không hợp lệ — chạy tay: C:\caddy\caddy.exe validate --config C:\caddy\Caddyfile" }
+
+    # -StopIis: tắt + vô hiệu IIS để nhả cổng 80/443 (IIS giữ cổng qua http.sys, PID 4 "System").
+    if ($stopIis -and (Get-Service W3SVC -ErrorAction SilentlyContinue)) {
+      Stop-Service W3SVC -Force
+      Set-Service W3SVC -StartupType Disabled
+      Start-Sleep -Seconds 2
+    }
 
     # Cổng 80/443 phải trống cho Caddy (hay bị IIS chiếm sẵn).
     $caddyPids = @(Get-Process caddy -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
@@ -88,7 +126,7 @@ $domain {
       Where-Object { $caddyPids -notcontains $_.OwningProcess })
     if ($busy.Count) {
       $owners = ($busy | ForEach-Object { "cổng $($_.LocalPort) ← PID $($_.OwningProcess)" }) -join "; "
-      throw "Cổng 80/443 đang bị chiếm ($owners). Nếu là IIS: Stop-Service W3SVC; Set-Service W3SVC -StartupType Disabled — rồi chạy lại."
+      throw "Cổng 80/443 đang bị chiếm ($owners). Nếu là IIS (PID 4) và không chạy site nào khác: chạy lại script với -StopIis."
     }
 
     # Firewall Windows: mở 80/443, bỏ rule mở 8080 ra ngoài.

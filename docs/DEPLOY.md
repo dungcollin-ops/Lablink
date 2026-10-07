@@ -198,7 +198,8 @@ cd "C:\Project Claude\LabLink"; Set-ExecutionPolicy -Scope Process Bypass -Force
 
 Script làm trên VPS:
 - Tải Caddy chính thức về `C:\caddy`, sinh `C:\caddy\Caddyfile` (reverse proxy + header bảo mật: HSTS, nosniff, SAMEORIGIN; giới hạn upload 25MB).
-- Kiểm tra cổng 80/443 trống (nếu IIS đang chiếm: `Stop-Service W3SVC; Set-Service W3SVC -StartupType Disabled`).
+- Kiểm tra cổng 80/443 trống. Nếu IIS đang chiếm (và không chạy site nào khác) thì thêm `-StopIis` để script tự tắt + vô hiệu IIS.
+- Nếu `www.<ten-mien>` cũng trỏ về VPS: tự chuyển hướng www → tên miền chính (tắt bằng `-NoWww`).
 - Mở firewall Windows 80/443, **xoá rule 8080**.
 - Service LabLink chỉ nghe `localhost:8080` (thêm `--urls` vào service → không cần reboot).
 - Tạo + chạy service `caddy`, rồi chờ cấp chứng chỉ và thử `https://<ten-mien>`.
