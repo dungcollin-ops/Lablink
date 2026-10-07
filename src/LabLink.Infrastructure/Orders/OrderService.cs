@@ -75,6 +75,8 @@ public partial class OrderService : IOrderService
             .ToDictionaryAsync(t => t.Id, t => t, ct);
         if (ids.Any(id => !tests.ContainsKey(id)))
             return OrderResult.Fail("Có xét nghiệm không tồn tại.");
+        if (tests.Values.FirstOrDefault(t => !t.IsActive) is { } inactive)
+            return OrderResult.Fail($"Xét nghiệm \"{inactive.Name}\" đã ngưng sử dụng.");
 
         // ---- Phòng ban đặt phiếu (lấy từ NV của người tạo) + bác sĩ chỉ định ----
         var creator = await _db.Users.Where(u => u.Id == userId)
@@ -282,6 +284,10 @@ public partial class OrderService : IOrderService
         var tests = await _db.LabTests.Where(t => ids.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t, ct);
         if (ids.Any(x => !tests.ContainsKey(x)))
             return OrderResult.Fail("Có xét nghiệm không tồn tại.");
+        // XN đã ngưng sử dụng: phiếu vốn đã có thì giữ được, không được thêm mới.
+        var existingTestIds = order.Items.Select(x => x.LabTestId).ToHashSet();
+        if (tests.Values.FirstOrDefault(t => !t.IsActive && !existingTestIds.Contains(t.Id)) is { } inactive)
+            return OrderResult.Fail($"Xét nghiệm \"{inactive.Name}\" đã ngưng sử dụng.");
 
         // ---- Giá chốt (deal) cho bác sĩ ----
         var dealPrices = order.Source == OrderSource.Doctor

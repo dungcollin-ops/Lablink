@@ -4,6 +4,7 @@ import {
   deleteCatalog,
   fetchCatalog,
   fetchFacets,
+  restoreCatalog,
   updateCatalog,
   updateCatalogTat,
   type CatalogItem,
@@ -29,6 +30,11 @@ export default function Catalog({ session }: Props) {
   const [group, setGroup] = useState("");
   const [provider, setProvider] = useState("");
   const [page, setPage] = useState(1);
+  const canEdit = (session.permissions as string[]).includes("catalog.price.edit");
+  const canManage = (session.permissions as string[]).includes("catalog.manage");
+  // Admin danh mục thấy cả XN đã ngưng sử dụng (để dùng lại); người khác chỉ thấy XN đang dùng.
+  const [showInactive, setShowInactive] = useState(true);
+  const includeInactive = canManage && showInactive;
 
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -52,7 +58,7 @@ export default function Catalog({ session }: Props) {
   }, [token]);
 
   // Reset trang khi đổi filter
-  useEffect(() => setPage(1), [query, group, provider]);
+  useEffect(() => setPage(1), [query, group, provider, includeInactive]);
 
   // Nạp danh mục (debounce theo query)
   useEffect(() => {
@@ -60,7 +66,7 @@ export default function Catalog({ session }: Props) {
     setLoading(true);
     setError("");
     const t = setTimeout(() => {
-      fetchCatalog(token, { query, group, provider, page, pageSize: PAGE_SIZE })
+      fetchCatalog(token, { query, group, provider, page, pageSize: PAGE_SIZE, includeInactive })
         .then((res) => {
           if (cancel) return;
           setItems(res.items);
@@ -73,22 +79,31 @@ export default function Catalog({ session }: Props) {
       cancel = true;
       clearTimeout(t);
     };
-  }, [token, query, group, provider, page, reloadTick]);
+  }, [token, query, group, provider, page, includeInactive, reloadTick]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to = Math.min(page * PAGE_SIZE, total);
 
-  const canEdit = (session.permissions as string[]).includes("catalog.price.edit");
-  const canManage = (session.permissions as string[]).includes("catalog.manage");
   function reload() { setReloadTick((n) => n + 1); }
-  async function doDelete(it: CatalogItem) {
-    if (!window.confirm(`Xóa xét nghiệm "${it.name}" (${it.code})? Không xóa được nếu đã dùng trong phiếu.`)) return;
+  async function doDeactivate(it: CatalogItem) {
+    if (!window.confirm(
+      `Ngưng sử dụng xét nghiệm "${it.name}" (${it.code})?\n` +
+      "XN sẽ không còn chọn được khi lập phiếu / đề nghị giá; phiếu cũ giữ nguyên. Có thể dùng lại sau.",
+    )) return;
     try {
       await deleteCatalog(token, it.id);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Lỗi xóa");
+      alert(e instanceof Error ? e.message : "Lỗi ngưng sử dụng");
+    }
+  }
+  async function doRestore(it: CatalogItem) {
+    try {
+      await restoreCatalog(token, it.id);
+      reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Lỗi dùng lại");
     }
   }
   const tatInput: CSSProperties = {
@@ -137,6 +152,12 @@ export default function Catalog({ session }: Props) {
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
+        {canManage && (
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, whiteSpace: "nowrap" }}>
+            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+            Hiện cả XN ngưng sử dụng
+          </label>
+        )}
       </div>
 
       <div className={styles.tableWrap}>
@@ -156,9 +177,16 @@ export default function Catalog({ session }: Props) {
             </thead>
             <tbody>
               {items.map((it) => (
-                <tr key={it.id}>
+                <tr key={it.id} style={it.isActive === false ? { opacity: 0.55 } : undefined}>
                   <td className={styles.code}>{it.code}</td>
-                  <td className={styles.name}>{it.name}</td>
+                  <td className={styles.name}>
+                    {it.name}
+                    {it.isActive === false && (
+                      <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: "var(--text-faint)" }}>
+                        · Ngưng sử dụng
+                      </span>
+                    )}
+                  </td>
                   <td><span className={styles.pill}>{it.group}</span></td>
                   <td className={styles.sample}>{it.samples.join(", ") || "—"}</td>
                   <td className={styles.provider}>{it.provider}</td>
@@ -177,7 +205,11 @@ export default function Catalog({ session }: Props) {
                   {canManage && (
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                       <button className={a.btn} onClick={() => setEditing(it)}>Sửa</button>{" "}
-                      <button className={a.btn} onClick={() => doDelete(it)}>Xóa</button>
+                      {it.isActive === false ? (
+                        <button className={a.btn} onClick={() => doRestore(it)}>Dùng lại</button>
+                      ) : (
+                        <button className={a.btn} onClick={() => doDeactivate(it)}>Ngưng sử dụng</button>
+                      )}
                     </td>
                   )}
                 </tr>

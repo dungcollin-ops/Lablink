@@ -22,8 +22,15 @@ public class CatalogController : ControllerBase
         [FromQuery] string? provider,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
+        [FromQuery] bool includeInactive = false,
         CancellationToken ct = default)
-        => Ok(await _catalog.SearchAsync(new CatalogQuery(query, group, provider, page, pageSize), ct));
+    {
+        // Mục đã ngưng sử dụng chỉ hiện cho admin danh mục (để dùng lại); các màn chọn XN
+        // (phiếu, combo, đề nghị giá) luôn chỉ thấy mục đang dùng.
+        includeInactive = includeInactive && User.HasClaim("perm", Permissions.CatalogManage);
+        return Ok(await _catalog.SearchAsync(
+            new CatalogQuery(query, group, provider, page, pageSize, includeInactive), ct));
+    }
 
     /// <summary>Danh sách nhóm + nhà cung cấp để dựng bộ lọc.</summary>
     [HttpGet("facets")]
@@ -55,12 +62,21 @@ public class CatalogController : ControllerBase
         return r.Ok ? Ok(r.Item) : BadRequest(new { message = r.Error });
     }
 
-    /// <summary>Xóa hẳn 1 xét nghiệm (admin) — chặn nếu đã dùng trong phiếu/đề nghị giá.</summary>
+    /// <summary>Ngưng sử dụng 1 xét nghiệm (admin) — xóa mềm, dòng vẫn giữ trong DB.</summary>
     [HttpDelete("{id:guid}")]
     [HasPermission(Permissions.CatalogManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var r = await _catalog.DeleteAsync(id, ct);
         return r.Ok ? Ok(new { ok = true }) : BadRequest(new { message = r.Error });
+    }
+
+    /// <summary>Dùng lại 1 xét nghiệm đã ngưng sử dụng (admin).</summary>
+    [HttpPost("{id:guid}/restore")]
+    [HasPermission(Permissions.CatalogManage)]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken ct)
+    {
+        var r = await _catalog.RestoreAsync(id, ct);
+        return r.Ok ? Ok(r.Item) : BadRequest(new { message = r.Error });
     }
 }

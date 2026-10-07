@@ -21,10 +21,10 @@ public class DealService : IDealService
             return (DealResult.Fail("Giá đề nghị không hợp lệ."), null);
 
         var ids = req.Items.Select(i => i.LabTestId).Distinct().ToList();
-        var validIds = await _db.LabTests.Where(t => ids.Contains(t.Id))
+        var validIds = await _db.LabTests.Where(t => ids.Contains(t.Id) && t.IsActive)
             .Select(t => t.Id).ToListAsync(ct);
         var missing = ids.Except(validIds).Any();
-        if (missing) return (DealResult.Fail("Có xét nghiệm không tồn tại."), null);
+        if (missing) return (DealResult.Fail("Có xét nghiệm không tồn tại hoặc đã ngưng sử dụng."), null);
 
         var batch = new PriceDealBatch
         {

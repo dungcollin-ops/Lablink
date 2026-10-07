@@ -15,7 +15,8 @@ public class CatalogService : ICatalogService
         var page = q.Page < 1 ? 1 : q.Page;
         var size = q.PageSize is < 1 or > 200 ? 50 : q.PageSize;
 
-        var query = _db.LabTests.AsNoTracking().Where(x => x.IsActive);
+        var query = _db.LabTests.AsNoTracking();
+        if (!q.IncludeInactive) query = query.Where(x => x.IsActive);
 
         if (!string.IsNullOrWhiteSpace(q.Query))
         {
@@ -36,7 +37,7 @@ public class CatalogService : ICatalogService
             .Skip((page - 1) * size).Take(size)
             .Select(x => new CatalogItemDto(
                 x.Id, x.Code, x.Name, x.Group, x.Provider, x.ListPrice, x.Samples,
-                x.TatMinHours, x.TatMaxHours))
+                x.TatMinHours, x.TatMaxHours, x.IsActive))
             .ToListAsync(ct);
 
         return new CatalogPage(total, page, size, items);
@@ -94,20 +95,25 @@ public class CatalogService : ICatalogService
         return CatalogResult.Success(ToDto(t));
     }
 
-    public async Task<CatalogResult> DeleteAsync(Guid id, CancellationToken ct = default)
+    // Xóa mềm: KHÔNG Remove dòng. CatalogSeeder chạy mỗi lần khởi động và thêm lại mọi
+    // ExternalId seed còn thiếu — xóa cứng thì mục seed sẽ "sống lại"; đồng thời giữ
+    // nguyên tham chiếu từ order_items / price_deals.
+    public Task<CatalogResult> DeleteAsync(Guid id, CancellationToken ct = default)
+        => SetActiveAsync(id, false, ct);
+
+    public Task<CatalogResult> RestoreAsync(Guid id, CancellationToken ct = default)
+        => SetActiveAsync(id, true, ct);
+
+    private async Task<CatalogResult> SetActiveAsync(Guid id, bool active, CancellationToken ct)
     {
         var t = await _db.LabTests.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (t is null) return CatalogResult.Fail("Không tìm thấy xét nghiệm.");
-
-        // Chỉ xóa cứng khi CHƯA phát sinh dữ liệu tham chiếu.
-        if (await _db.OrderItems.AnyAsync(x => x.LabTestId == id, ct))
-            return CatalogResult.Fail("Đã dùng trong phiếu — không xóa được (có thể ẩn thay vì xóa).");
-        if (await _db.PriceDeals.AnyAsync(x => x.LabTestId == id, ct))
-            return CatalogResult.Fail("Đã dùng trong đề nghị giá — không xóa được.");
-
-        _db.LabTests.Remove(t);
-        await _db.SaveChangesAsync(ct);
-        return CatalogResult.Success();
+        if (t.IsActive != active)
+        {
+            t.IsActive = active;
+            await _db.SaveChangesAsync(ct);
+        }
+        return CatalogResult.Success(ToDto(t));
     }
 
     private static string? Validate(CatalogItemInput i)
@@ -121,7 +127,7 @@ public class CatalogService : ICatalogService
     }
 
     private static CatalogItemDto ToDto(Domain.Entities.LabTest x) => new(
-        x.Id, x.Code, x.Name, x.Group, x.Provider, x.ListPrice, x.Samples, x.TatMinHours, x.TatMaxHours);
+        x.Id, x.Code, x.Name, x.Group, x.Provider, x.ListPrice, x.Samples, x.TatMinHours, x.TatMaxHours, x.IsActive);
 
     public async Task<CatalogFacets> GetFacetsAsync(CancellationToken ct = default)
     {

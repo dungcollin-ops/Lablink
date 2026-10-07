@@ -9,7 +9,8 @@ public record CatalogItemDto(
     long ListPrice,
     IReadOnlyList<string> Samples,
     int? TatMinHours,
-    int? TatMaxHours);
+    int? TatMaxHours,
+    bool IsActive = true);
 
 /// <summary>Cập nhật thời gian dự kiến trả KQ (giờ) cho 1 xét nghiệm.</summary>
 public record UpdateTatRequest(int? TatMinHours, int? TatMaxHours);
@@ -37,7 +38,8 @@ public record CatalogQuery(
     string? Group,
     string? Provider,
     int Page = 1,
-    int PageSize = 50);
+    int PageSize = 50,
+    bool IncludeInactive = false);
 
 public record CatalogPage(
     int Total,

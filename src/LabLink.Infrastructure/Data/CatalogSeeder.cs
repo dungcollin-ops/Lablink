@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace LabLink.Infrastructure.Data;
 
 /// <summary>Seed danh mục xét nghiệm từ file nhúng Data/Seed/catalog.json
-/// (~1184 mục, dữ liệu thật). Idempotent theo ExternalId.</summary>
+/// (~1184 mục, dữ liệu thật). Idempotent theo ExternalId.
+/// CHỈ THÊM mục chưa có — không ghi đè sửa đổi, không bật lại mục đã ngưng sử dụng
+/// (IsActive = false). Vì vậy danh mục phải xóa mềm, không xóa cứng dòng seed.</summary>
 public static class CatalogSeeder
 {
     private sealed record Item(
@@ -22,6 +24,7 @@ public static class CatalogSeeder
         var items = await JsonSerializer.DeserializeAsync<List<Item>>(
             stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, ct) ?? new();
 
+        // Gồm cả mục đã ngưng sử dụng → mục seed bị "xóa" (IsActive = false) không bị thêm lại.
         var existing = (await db.LabTests.Select(x => x.ExternalId).ToListAsync(ct))
             .ToHashSet();
 

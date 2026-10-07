@@ -10,6 +10,8 @@ export interface CatalogItem {
   samples: string[];
   tatMinHours?: number | null;
   tatMaxHours?: number | null;
+  /** false = đã ngưng sử dụng (chỉ trả về khi admin gọi với includeInactive). */
+  isActive?: boolean;
 }
 
 export interface CatalogPage {
@@ -34,6 +36,8 @@ export interface CatalogParams {
   provider?: string;
   page?: number;
   pageSize?: number;
+  /** Lấy cả XN đã ngưng sử dụng — chỉ có hiệu lực với quyền catalog.manage. */
+  includeInactive?: boolean;
 }
 
 export async function fetchCatalog(token: string | undefined, p: CatalogParams): Promise<CatalogPage> {
@@ -43,6 +47,7 @@ export async function fetchCatalog(token: string | undefined, p: CatalogParams):
   if (p.provider) qs.set("provider", p.provider);
   qs.set("page", String(p.page ?? 1));
   qs.set("pageSize", String(p.pageSize ?? 50));
+  if (p.includeInactive) qs.set("includeInactive", "true");
   const res = await fetch(`${API_BASE}/api/catalog?${qs}`, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`catalog ${res.status}`);
   return res.json();
@@ -94,10 +99,18 @@ export async function updateCatalog(token: string | undefined, id: string, body:
   return res.json();
 }
 
-/** Xóa hẳn 1 xét nghiệm (admin). */
+/** Ngưng sử dụng 1 xét nghiệm (admin) — xóa mềm, có thể dùng lại. */
 export async function deleteCatalog(token: string | undefined, id: string): Promise<void> {
   await jsonOrThrow(await fetch(`${API_BASE}/api/catalog/${id}`, {
     method: "DELETE",
+    headers: authHeaders(token),
+  }));
+}
+
+/** Dùng lại 1 xét nghiệm đã ngưng sử dụng (admin). */
+export async function restoreCatalog(token: string | undefined, id: string): Promise<void> {
+  await jsonOrThrow(await fetch(`${API_BASE}/api/catalog/${id}/restore`, {
+    method: "POST",
     headers: authHeaders(token),
   }));
 }
