@@ -121,7 +121,9 @@ $wwwBlock
 "@
     # ASCII (không BOM) để Caddy đọc chuẩn.
     Set-Content -Path "$dir\Caddyfile" -Value $caddyfile -Encoding ASCII
-    & "$dir\caddy.exe" validate --config "$dir\Caddyfile" --adapter caddyfile 2>$null | Out-Null
+    # Caddy ghi log ra stderr; PowerShell 5.1 (EAP=Stop, chạy remoting) coi stderr là lỗi và dừng script
+    # → gọi qua cmd để stderr bị nuốt ngay trong cmd, chỉ dùng exit code.
+    cmd /c "$dir\caddy.exe validate --config $dir\Caddyfile --adapter caddyfile >nul 2>&1"
     if ($LASTEXITCODE -ne 0) { throw "Caddyfile không hợp lệ — chạy tay: C:\caddy\caddy.exe validate --config C:\caddy\Caddyfile" }
 
     # -StopIis: tắt + vô hiệu IIS để nhả cổng 80/443 (IIS giữ cổng qua http.sys, PID 4 "System").
@@ -156,6 +158,7 @@ $wwwBlock
     if ($svc.PathName -notmatch '^"?(?<exe>[^"]+?\.exe)"?') { throw "Không đọc được đường dẫn LabLink: $($svc.PathName)" }
     $exe = $Matches['exe']
     sc.exe config LabLink binPath= "$exe --urls http://localhost:8080" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Không đổi được cấu hình service LabLink (sc.exe exit $LASTEXITCODE)." }
     [Environment]::SetEnvironmentVariable("ASPNETCORE_URLS", "http://localhost:8080", "Machine")  # cho lần reboot sau
     Restart-Service LabLink -Force
 
