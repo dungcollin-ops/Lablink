@@ -13,6 +13,7 @@ import {
 } from "../api/deals";
 import a from "./admin.module.css";
 import d from "./Deal.module.css";
+import Icon from "../components/Icon";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 const fmtDT = (s?: string | null) =>
@@ -105,8 +106,8 @@ export default function Deals({ session }: { session: Session }) {
               </span>
               {isHistory && (
                 <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                  {approvedCount > 0 && <span style={{ color: "var(--success-text)", fontWeight: 600 }}>✔ {approvedCount} chốt</span>}
-                  {rejectedCount > 0 && <span style={{ color: "var(--danger)", fontWeight: 600 }}>✘ {rejectedCount} từ chối</span>}
+                  {approvedCount > 0 && <span style={{ color: "var(--success-text)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="check" size={14} /> {approvedCount} chốt</span>}
+                  {rejectedCount > 0 && <span style={{ color: "var(--danger)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="x" size={14} /> {rejectedCount} từ chối</span>}
                   {cancelledCount > 0 && <span style={{ fontWeight: 600 }}>⦸ {cancelledCount} huỷ</span>}
                   {lastDecidedAt && <span>· duyệt {fmtDT(lastDecidedAt)}</span>}
                   {approvedCount > 0 && (

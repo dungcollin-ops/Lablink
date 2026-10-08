@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Icon from "./Icon";
 import styles from "./Modal.module.css";
 
 interface Props {
@@ -11,11 +12,11 @@ interface Props {
 export default function Modal({ title, onClose, children, footer }: Props) {
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.modal} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.title}>{title}</div>
           <button className={styles.close} onClick={onClose} aria-label="Đóng">
-            ×
+            <Icon name="x" />
           </button>
         </div>
         <div className={styles.body}>{children}</div>

@@ -3,6 +3,7 @@ import type { Session } from "../auth/session";
 import { listPermissions, listRoles, setRolePermissions, type AdminRole } from "../api/admin";
 import s from "./admin.module.css";
 import r from "./Roles.module.css";
+import Icon from "../components/Icon";
 
 interface Props {
   session: Session;
@@ -112,7 +113,7 @@ function RoleCard({
           {busy ? "Đang lưu…" : "Lưu"}
         </button>
         {isAdmin && <span className={r.roleCode}>Nhóm quản trị luôn đủ quyền</span>}
-        {saved && <span className={r.saved}>✓ Đã lưu</span>}
+        {saved && <span className={r.saved}><Icon name="check" size={14} /> Đã lưu</span>}
       </div>
     </div>
   );

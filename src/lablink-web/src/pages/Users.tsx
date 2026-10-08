@@ -16,6 +16,7 @@ import {
 import { listEmployees, type Employee } from "../api/employees";
 import { ApiError } from "../api/http";
 import s from "./admin.module.css";
+import Icon from "../components/Icon";
 
 const STATUS: Record<string, { cls: string; label: string }> = {
   Active: { cls: s.badgeActive, label: "Hoạt động" },
@@ -96,7 +97,7 @@ export default function Users({ session }: Props) {
             onChange={(e) => setQuery(e.target.value)}
           />
           <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => setCreating(true)}>
-            ＋ Thêm người dùng
+            <Icon name="plus" size={14} /> Thêm người dùng
           </button>
         </div>
       </div>

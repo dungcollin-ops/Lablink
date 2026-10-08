@@ -14,6 +14,7 @@ import type { Session } from "../auth/session";
 import Modal from "../components/Modal";
 import a from "./admin.module.css";
 import styles from "./Catalog.module.css";
+import Icon from "../components/Icon";
 
 const PAGE_SIZE = 50;
 const vnd = new Intl.NumberFormat("vi-VN");
@@ -128,7 +129,7 @@ export default function Catalog({ session }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
           <div className={styles.count}>{vnd.format(total)} xét nghiệm</div>
           {canManage && (
-            <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setCreating(true)}>＋ Thêm xét nghiệm</button>
+            <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setCreating(true)}><Icon name="plus" size={14} /> Thêm xét nghiệm</button>
           )}
         </div>
       </div>
@@ -233,7 +234,7 @@ export default function Catalog({ session }: Props) {
           disabled={page <= 1}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
         >
-          ← Trước
+          <Icon name="chevronLeft" size={14} /> Trước
         </button>
         <span className={styles.pageInfo}>
           Trang {page}/{totalPages}
@@ -243,7 +244,7 @@ export default function Catalog({ session }: Props) {
           disabled={page >= totalPages}
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
         >
-          Sau →
+          Sau <Icon name="chevronRight" size={14} />
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Session } from "../auth/session";
 import {
   listEmployees, createEmployee, updateEmployee, POSITIONS,
@@ -8,6 +8,7 @@ import { listDepartments, type Department } from "../api/departments";
 import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
 import a from "./admin.module.css";
+import Icon from "../components/Icon";
 
 export default function Employees({ session }: { session: Session }) {
   const token = session.token;
@@ -26,14 +27,11 @@ export default function Employees({ session }: { session: Session }) {
   }, [token, filterDept]);
   useEffect(reload, [reload]);
 
-  const th: CSSProperties = { textAlign: "left", padding: "8px 10px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
-  const td: CSSProperties = { padding: "8px 10px", fontSize: 14, borderBottom: "1px solid var(--border-2)" };
-
   return (
     <div>
       <div className={a.head}>
         <div className={a.h1}>Danh mục nhân viên</div>
-        <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setCreating(true)}>＋ Thêm nhân viên</button>
+        <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setCreating(true)}><Icon name="plus" size={14} /> Thêm nhân viên</button>
       </div>
 
       <div style={{ marginBottom: 12 }}>
@@ -45,39 +43,39 @@ export default function Employees({ session }: { session: Session }) {
 
       {loading && <div style={{ padding: 16, color: "var(--text-muted)" }}>Đang tải…</div>}
       {!loading && (
-        <div style={{ overflowX: "auto", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-card)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className={a.tableWrap}><div className={a.scroll}>
+          <table className={a.table}>
             <thead>
               <tr>
-                <th style={th}>Họ tên</th>
-                <th style={th}>Chức danh</th>
-                <th style={th}>Phòng ban</th>
-                <th style={th}>Mã NV</th>
-                <th style={th}>SĐT</th>
-                <th style={th}>Trạng thái</th>
-                <th style={th}></th>
+                <th>Họ tên</th>
+                <th>Chức danh</th>
+                <th>Phòng ban</th>
+                <th>Mã NV</th>
+                <th>SĐT</th>
+                <th>Trạng thái</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {items.map((e) => (
                 <tr key={e.id}>
-                  <td style={{ ...td, fontWeight: 600 }}>{e.fullName}</td>
-                  <td style={td}>{e.position || "—"}</td>
-                  <td style={td}>{e.departmentName}</td>
-                  <td style={td}>{e.code || "—"}</td>
-                  <td style={td}>{e.phone || "—"}</td>
-                  <td style={td}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: e.isActive ? "var(--success-text)" : "var(--text-faint)" }}>
+                  <td className={a.name}>{e.fullName}</td>
+                  <td>{e.position || "—"}</td>
+                  <td>{e.departmentName}</td>
+                  <td>{e.code || "—"}</td>
+                  <td>{e.phone || "—"}</td>
+                  <td>
+                    <span className={`${a.badge} ${e.isActive ? a.badgeActive : a.badgeLeft}`}>
                       {e.isActive ? "Đang dùng" : "Đã ẩn"}
                     </span>
                   </td>
-                  <td style={td}><button className={a.btn} onClick={() => setEditing(e)}>Sửa</button></td>
+                  <td><div className={a.rowActions}><button className={a.btn} onClick={() => setEditing(e)}>Sửa</button></div></td>
                 </tr>
               ))}
-              {items.length === 0 && <tr><td style={{ ...td, color: "var(--text-faint)" }} colSpan={7}>Chưa có nhân viên nào.</td></tr>}
+              {items.length === 0 && <tr><td className={a.state} colSpan={7}>Chưa có nhân viên nào.</td></tr>}
             </tbody>
           </table>
-        </div>
+        </div></div>
       )}
 
       {(creating || editing) && (

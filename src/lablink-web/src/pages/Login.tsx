@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { ROLE_LABEL } from "../auth/permissions";
-import { DEMO_HINTS, mockLogin, type Session } from "../auth/session";
+import { mockLogin, type Session } from "../auth/session";
 import { apiLogin } from "../api/auth";
 import { USE_API } from "../api/config";
 import styles from "./Login.module.css";
@@ -81,27 +80,6 @@ export default function Login({ onLogin }: Props) {
           {busy ? "Đang đăng nhập…" : "Đăng nhập"}
         </button>
 
-        {/* Khung tài khoản demo CHỈ hiện khi chạy dev — bản build production không có. */}
-        {import.meta.env.DEV && (
-          <div className={styles.demo}>
-            <div className={styles.demoTitle}>Tài khoản demo (mật khẩu: demo)</div>
-            {DEMO_HINTS.map((d) => (
-              <button
-                type="button"
-                key={d.email}
-                className={styles.demoRow}
-                onClick={() => {
-                  setEmail(d.email);
-                  setPassword("demo");
-                  setError("");
-                }}
-              >
-                <span>{d.email}</span>
-                <span className={styles.demoRole}>{ROLE_LABEL[d.role]}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </form>
     </div>
   );

@@ -74,14 +74,12 @@
 
 .table thead th {
   text-align: left;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-faint);
-  padding: 11px 10px;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
+  color: var(--table-head-text);
+  padding: 10px 10px;
+  background: var(--table-head-bg);
+  border-bottom: 1px solid var(--table-head-border);
   white-space: nowrap;
 }
 
@@ -110,7 +108,7 @@
 }
 
 .code {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--text-muted);
   white-space: nowrap;

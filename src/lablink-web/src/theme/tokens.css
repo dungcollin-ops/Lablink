@@ -1,70 +1,78 @@
-/* LabLink — Design tokens (FPT IS)
- * Nguồn: README.md · mục "Design Tokens". Giá trị chốt từ prototype.
- * Prototype dùng inline style; ở đây gom thành CSS variables để tái dùng. */
+/* LabLink — Design tokens
+ * Phong cách tối giản (shadcn/zinc): nền trắng, viền mảnh, 1 màu nhấn xanh.
+ * Mockup đã duyệt: artifact "LabLink UI Refresh" (2026-10-08). */
 
 :root {
-  /* ---- Brand FPT IS ---- */
-  --brand-blue: #0062b0;
+  /* ---- Brand ---- */
+  --brand-blue: #2563eb;
   --brand-orange: #f37021;
-  --brand-green: #12b24c;
+  --brand-green: #059669;
 
-  /* ---- Neutral / surface ---- */
-  --border: #dfe5ee;
-  --border-2: #e4e9f1;
-  --border-3: #d5deeb;
-  --border-4: #c7d0dd;
+  /* ---- Neutral / surface (zinc) ---- */
+  --border: #e4e4e7;
+  --border-2: #f0f0f2;      /* vạch ngăn dòng trong bảng/thẻ */
+  --border-3: #e4e4e7;
+  --border-4: #d4d4d8;      /* viền khi hover */
+  --divider: #f0f0f2;
 
-  --input-bg: #fbfcfe;
-  --surface-1: #f4f6fa;
-  --surface-2: #f6f8fb;
-  --surface-3: #f0f3f8;
-  --surface-4: #eef1f6;
-  --page-bg: #eef2f7;
+  --input-bg: #ffffff;
+  --surface-1: #f4f4f5;     /* nền hover / nút phụ */
+  --surface-2: #fafafa;     /* nền nhạt (header bảng, sidebar) */
+  --surface-3: #f4f4f5;
+  --surface-4: #f4f4f5;
+  --page-bg: #ffffff;
   --white: #ffffff;
 
   /* ---- Text ---- */
-  --text-title: #12213f;
-  --text-body: #41506b;
-  --text-label: #54607a;
-  --text-muted: #6b7890;
-  --text-faint: #8a97ab;
+  --text-title: #09090b;
+  --text-body: #27272a;
+  --text-label: #3f3f46;
+  --text-muted: #52525b;
+  --text-faint: #71717a;
 
   /* ---- Accent (ngữ nghĩa) ---- */
   --action: #2563eb;        /* xanh dương hành động */
   --action-hover: #1d4ed8;
-  --action-soft: #d5e2fb;
+  --action-soft: #eff4ff;
+  --ring: 0 0 0 3px rgba(37, 99, 235, 0.14);
 
-  --success: #0f9d8b;       /* teal — đã chốt / thành công */
-  --success-text: #0b7a68;
-  --success-text-2: #0b8676;
-  --success-soft: #e4f4ef;
+  /* Header bảng / danh sách */
+  --table-head-bg: #eaf1fe;
+  --table-head-text: #1e3a8a;
+  --table-head-border: #d3e0fb;
+
+  --success: #059669;       /* đã chốt / thành công */
+  --success-text: #047857;
+  --success-text-2: #047857;
+  --success-soft: #ecfdf5;
 
   --sid: #4f46e5;           /* tím — SID / in tem */
-  --sid-border: #d7d5fb;
-  --sid-soft: #f4f3ff;
+  --sid-border: #e0e7ff;
+  --sid-soft: #eef2ff;
 
-  --danger: #c23b3b;        /* đỏ — lỗi / từ chối */
-  --danger-2: #e0574f;
-  --danger-soft: #fff6f5;
-  --danger-bg: #fdeaea;     /* nền dòng quá hạn (đậm hơn soft) */
-  --danger-border: #f1c4c4; /* viền dòng quá hạn */
+  --danger: #b91c1c;        /* đỏ — lỗi / từ chối / quá hạn */
+  --danger-2: #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-bg: #fef2f2;     /* nền dòng quá hạn */
+  --danger-border: #fecaca; /* viền dòng quá hạn */
 
-  --warning-text: #a5691a;  /* vàng — chờ xử lý */
-  --warning-soft: #fdf3e3;
+  --warning-text: #b45309;  /* vàng — chờ xử lý */
+  --warning-soft: #fffbeb;
 
   /* ---- Typography ---- */
   --font-sans: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   /* ---- Radius ---- */
-  --radius-control: 10px;
-  --radius-card: 14px;
+  --radius-control: 8px;
+  --radius-card: 12px;
   --radius-pill: 999px;
 
   /* ---- Shadow ---- */
-  --shadow-card: 0 1px 2px rgba(18, 33, 63, 0.05);
-  --shadow-hover: 0 4px 14px rgba(18, 33, 63, 0.1);
-  --shadow-modal: 0 18px 48px rgba(18, 33, 63, 0.18);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.14);
 
   /* ---- Motion ---- */
   --ease: cubic-bezier(0.2, 0, 0, 1);

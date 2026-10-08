@@ -14,6 +14,7 @@ import { COMBOS } from "../combos";
 import QrScan, { type CccdData } from "../components/QrScan";
 import Modal from "../components/Modal";
 import CatalogPicker from "../components/CatalogPicker";
+import Icon from "../components/Icon";
 import { isoToVnDob as isoToVn, vnToIsoDob as vnToIso, maskDob } from "../lib/dob";
 import a from "./admin.module.css";
 import s from "./OrderForm.module.css";
@@ -81,6 +82,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
   const [comboBusy, setComboBusy] = useState("");
   const [phoneWarn, setPhoneWarn] = useState(false); // cảnh báo SĐT 9/11 số (lệch 10 số thường gặp)
   const [pickerOpen, setPickerOpen] = useState(false); // popup duyệt toàn bộ danh mục
+  const [moreOpen, setMoreOpen] = useState(false); // điện thoại: mở các trường phụ (CCCD, BHYT, email, địa chỉ)
 
   const set = (k: keyof Patient, v: string) => setPatient((p) => ({ ...p, [k]: v }));
 
@@ -245,7 +247,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
           <div className={a.h1}>{isDoctor ? "Chỉ định xét nghiệm" : "Đặt xét nghiệm"}</div>
         </div>
         <div className={s.success}>
-          <div className={s.successTitle}>✓ Đã gửi chỉ định tới phòng xét nghiệm</div>
+          <div className={s.successTitle}><Icon name="check" size={18} strokeWidth={2.4} /> Đã gửi chỉ định tới phòng xét nghiệm</div>
           <div>
             Phiếu <strong>{created.orderNo}</strong> · BN {created.patientName} ({created.patientMaBN}) ·
             Tổng <strong>{vnd.format(created.total)} ₫</strong>
@@ -255,7 +257,7 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
               <span key={sm.id} className={s.sidChip}>{sm.sid} · {sm.sampleType}</span>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
             <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => onNavigate("track")}>
               Xem theo dõi
             </button>
@@ -266,29 +268,44 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
     );
   }
 
+  const showExtra = moreOpen || !!(patient.email || patient.nationalId || patient.bhyt || patient.address || patient.maBN);
+  const submitLabel = busy ? "Đang gửi…" : isDoctor ? "Gửi chỉ định" : "Đặt xét nghiệm";
+
   return (
     <div>
-      <div className={a.head}>
-        <div className={a.h1}>{isDoctor ? "Chỉ định xét nghiệm" : "Đặt xét nghiệm"}</div>
+      <div className={`${a.head} ${s.pageTitle}`}>
+        <div>
+          <h1 className={a.h1}>{isDoctor ? "Chỉ định xét nghiệm" : "Đặt xét nghiệm"}</h1>
+          <div className={s.pageSub}>
+            {isDoctor
+              ? "Nhập thông tin bệnh nhân, chọn xét nghiệm rồi gửi phiếu sang phòng xét nghiệm."
+              : "Nhập thông tin khách hàng và chọn xét nghiệm cần làm."}
+          </div>
+        </div>
       </div>
 
       <div className={s.layout}>
         <div>
-          <div className={s.section}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div className={s.sectionTitle}>Thông tin bệnh nhân</div>
-              <button type="button" className={a.btn} onClick={() => setQrOpen(true)}>⛶ Quét QR CCCD</button>
+          <section className={s.section} aria-labelledby="of-bn">
+            <div className={s.sectionHead}>
+              <h2 id="of-bn" className={s.sectionTitle}>{isDoctor ? "Bệnh nhân" : "Khách hàng"}</h2>
+              <button type="button" className={`${a.btn} ${s.qrBtn}`} onClick={() => setQrOpen(true)}>
+                <Icon name="scan" /> Quét QR CCCD
+              </button>
             </div>
 
             {isDoctor && (
-              <div className={s.searchBox} style={{ marginBottom: 12 }}>
-                <input
-                  className={s.input}
-                  style={{ width: "100%" }}
-                  placeholder="Tìm bệnh nhân cũ (tên / mã BN / CCCD / SĐT)…"
-                  value={pQuery}
-                  onChange={(e) => setPQuery(e.target.value)}
-                />
+              <div className={s.searchBox} style={{ marginBottom: 14 }}>
+                <label className={s.searchField}>
+                  <Icon name="search" />
+                  <input
+                    type="search"
+                    aria-label="Tìm bệnh nhân cũ"
+                    placeholder="Tìm bệnh nhân cũ (tên / mã BN / CCCD / SĐT)…"
+                    value={pQuery}
+                    onChange={(e) => setPQuery(e.target.value)}
+                  />
+                </label>
                 {pResults.length > 0 && (
                   <div className={s.results}>
                     {pResults.map((p) => (
@@ -302,20 +319,21 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
               </div>
             )}
 
-            <div className={s.grid}>
+            <div className={`${s.grid} ${showExtra ? s.showExtra : ""}`}>
               {isDoctor && (
-                <div className={s.field}>
-                  <label className={s.label}>Mã BN (tự sinh nếu trống)</label>
-                  <input className={s.input} value={patient.maBN} onChange={(e) => set("maBN", e.target.value)} />
+                <div className={`${s.field} ${s.extra}`}>
+                  <label className={s.label} htmlFor="of-mabn">Mã bệnh nhân</label>
+                  <input id="of-mabn" className={s.input} style={{ fontFamily: "var(--font-mono)" }} placeholder="Tự sinh nếu để trống" value={patient.maBN} onChange={(e) => set("maBN", e.target.value)} />
                 </div>
               )}
               <div className={s.field}>
-                <label className={s.label}>Họ tên *</label>
-                <input className={s.input} value={patient.fullName} onChange={(e) => set("fullName", e.target.value.toUpperCase())} style={{ textTransform: "uppercase" }} />
+                <label className={s.label} htmlFor="of-name">Họ tên <span className={s.req}>*</span></label>
+                <input id="of-name" className={s.input} value={patient.fullName} onChange={(e) => set("fullName", e.target.value.toUpperCase())} style={{ textTransform: "uppercase" }} />
               </div>
-              <div className={s.field}>
-                <label className={s.label}>Ngày sinh * <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(đủ dd/mm/yyyy, hoặc chỉ năm yyyy)</span></label>
+              <div className={`${s.field} ${s.half}`}>
+                <label className={s.label} htmlFor="of-dob">Ngày sinh <span className={s.req}>*</span></label>
                 <input
+                  id="of-dob"
                   className={s.input}
                   type="text"
                   inputMode="numeric"
@@ -324,22 +342,19 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                   value={patient.dob}
                   onChange={(e) => set("dob", maskDob(e.target.value))}
                 />
+                <span className={s.hint}>Gõ đủ ngày tháng năm, hoặc chỉ năm</span>
               </div>
-              <div className={s.field}>
-                <label className={s.label}>Giới tính</label>
-                <div style={{ display: "flex", gap: 8 }}>
+              <div className={`${s.field} ${s.half}`}>
+                <span className={s.label} id="of-sex">Giới tính</span>
+                <div className={s.seg} role="radiogroup" aria-labelledby="of-sex">
                   {["Nam", "Nữ"].map((g) => (
                     <button
                       key={g}
                       type="button"
+                      role="radio"
+                      aria-checked={patient.gender === g}
+                      className={`${s.segBtn} ${patient.gender === g ? s.segOn : ""}`}
                       onClick={() => set("gender", g)}
-                      style={{
-                        flex: 1, padding: "9px 0", borderRadius: "var(--radius-control)", fontSize: 14,
-                        border: `1px solid ${patient.gender === g ? "var(--action)" : "var(--border-3)"}`,
-                        background: patient.gender === g ? "var(--action-soft)" : "var(--input-bg)",
-                        color: patient.gender === g ? "var(--action-hover)" : "var(--text-body)",
-                        fontWeight: patient.gender === g ? 600 : 500, cursor: "pointer",
-                      }}
                     >
                       {g}
                     </button>
@@ -347,129 +362,149 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                 </div>
               </div>
               <div className={s.field}>
-                <label className={s.label}>Điện thoại</label>
-                <input className={s.input} value={patient.phone} onChange={(e) => set("phone", e.target.value)} />
+                <label className={s.label} htmlFor="of-phone">Điện thoại</label>
+                <input id="of-phone" className={s.input} type="tel" inputMode="tel" placeholder="9 hoặc 11 số" value={patient.phone} onChange={(e) => set("phone", e.target.value)} />
               </div>
-              <div className={s.field}>
-                <label className={s.label}>Email</label>
+              <div className={`${s.field} ${s.extra}`}>
+                <label className={s.label} htmlFor="of-email">Email</label>
                 <input
+                  id="of-email"
+                  type="email"
                   className={`${s.input} ${emailErr ? s.inputError : ""}`}
                   value={patient.email}
                   onChange={(e) => { set("email", e.target.value); setEmailErr(false); }}
-                  placeholder="ten@benhvien.vn"
+                  placeholder="ten@email.com"
                 />
                 {emailErr && <span className={s.errText}>Email không hợp lệ</span>}
               </div>
-              <div className={s.field}>
-                <label className={s.label}>Số CCCD</label>
-                <input className={s.input} value={patient.nationalId} onChange={(e) => set("nationalId", e.target.value)} />
+              <div className={`${s.field} ${s.extra}`}>
+                <label className={s.label} htmlFor="of-cccd">Số CCCD</label>
+                <input id="of-cccd" className={s.input} inputMode="numeric" value={patient.nationalId} onChange={(e) => set("nationalId", e.target.value)} />
               </div>
-              <div className={s.field}>
-                <label className={s.label}>Số thẻ BHYT</label>
-                <input className={s.input} value={patient.bhyt} onChange={(e) => set("bhyt", e.target.value)} />
+              <div className={`${s.field} ${s.extra}`}>
+                <label className={s.label} htmlFor="of-bhyt">Số thẻ BHYT</label>
+                <input id="of-bhyt" className={s.input} value={patient.bhyt} onChange={(e) => set("bhyt", e.target.value)} />
               </div>
-              <div className={`${s.field} ${s.span2}`}>
-                <label className={s.label}>Địa chỉ</label>
-                <input className={s.input} value={patient.address} onChange={(e) => set("address", e.target.value)} />
+              <div className={`${s.field} ${s.span2} ${s.extra}`}>
+                <label className={s.label} htmlFor="of-addr">Địa chỉ</label>
+                <input id="of-addr" className={s.input} value={patient.address} onChange={(e) => set("address", e.target.value)} />
               </div>
-
-              {isDoctor && (
-                <>
-                  <div className={`${s.field} ${s.span2}`}>
-                    <label className={s.label}>Chẩn đoán</label>
-                    <input className={s.input} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
-                  </div>
-                  <div className={s.field}>
-                    <label className={s.label}>Bác sĩ chỉ định (danh mục)</label>
-                    {doctors.length > 0 ? (
-                      <select className={s.input} value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
-                        <option value="">— Chọn bác sĩ —</option>
-                        {doctors.map((d) => (
-                          <option key={d.id} value={d.id}>{d.fullName} · {d.departmentName}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input className={s.input} placeholder="Nhập tên bác sĩ" value={doctorCode} onChange={(e) => setDoctorCode(e.target.value)} />
-                    )}
-                  </div>
-                  <div className={s.field}>
-                    <label className={s.label}>Phòng khám (ghi chú)</label>
-                    <input className={s.input} value={clinicName} onChange={(e) => setClinicName(e.target.value)} />
-                  </div>
-                </>
+              {!showExtra && (
+                <button type="button" className={s.moreToggle} aria-expanded={false} onClick={() => setMoreOpen(true)}>
+                  <Icon name="plus" size={14} /> Thêm thông tin: CCCD, BHYT, email, địa chỉ
+                </button>
               )}
               {!isDoctor && (
                 <div className={`${s.field} ${s.span2}`}>
-                  <label className={s.label}>Ghi chú</label>
-                  <input className={s.input} value={patient.note} onChange={(e) => set("note", e.target.value)} />
+                  <label className={s.label} htmlFor="of-note">Ghi chú</label>
+                  <input id="of-note" className={s.input} value={patient.note} onChange={(e) => set("note", e.target.value)} />
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
-          <div className={s.section}>
-            <div className={s.sectionTitle}>Chọn xét nghiệm</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+          {isDoctor && (
+            <section className={s.section} aria-labelledby="of-cd">
+              <h2 id="of-cd" className={s.sectionTitle}>Chỉ định</h2>
+              <div className={s.grid}>
+                <div className={`${s.field} ${s.span2}`}>
+                  <label className={s.label} htmlFor="of-dx">Chẩn đoán</label>
+                  <input id="of-dx" className={s.input} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
+                </div>
+                <div className={s.field}>
+                  <label className={s.label} htmlFor="of-doc">Bác sĩ chỉ định</label>
+                  {doctors.length > 0 ? (
+                    <select id="of-doc" className={s.input} value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
+                      <option value="">— Chọn bác sĩ —</option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>{d.fullName} · {d.departmentName}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input id="of-doc" className={s.input} placeholder="Nhập tên bác sĩ" value={doctorCode} onChange={(e) => setDoctorCode(e.target.value)} />
+                  )}
+                </div>
+                <div className={s.field}>
+                  <label className={s.label} htmlFor="of-clinic">Phòng khám (ghi chú)</label>
+                  <input id="of-clinic" className={s.input} value={clinicName} onChange={(e) => setClinicName(e.target.value)} />
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section className={s.section} aria-labelledby="of-xn">
+            <h2 id="of-xn" className={s.sectionTitle}>Chọn xét nghiệm</h2>
+            <div className={s.combos}>
               {COMBOS.map((c) => (
                 <button
                   key={c.name}
                   type="button"
-                  className={a.btn}
+                  className={s.combo}
                   disabled={comboBusy !== ""}
                   onClick={() => applyCombo(c.name, c.queries)}
                 >
-                  {comboBusy === c.name ? "Đang thêm…" : `＋ ${c.name}`}
+                  <Icon name="plus" size={14} />
+                  {comboBusy === c.name ? "Đang thêm…" : c.name}
                 </button>
               ))}
             </div>
-            <div className={s.searchBox}>
-              <input
-                className={s.input}
-                style={{ width: "100%", paddingRight: 44 }}
-                placeholder="Tìm tên hoặc mã xét nghiệm…"
-                value={tQuery}
-                onChange={(e) => setTQuery(e.target.value)}
-              />
+            <div className={s.searchRow}>
+              <div className={s.searchBox}>
+                <label className={s.searchField}>
+                  <Icon name="search" />
+                  <input
+                    type="search"
+                    aria-label="Tìm xét nghiệm"
+                    placeholder="Tìm tên hoặc mã xét nghiệm…"
+                    value={tQuery}
+                    onChange={(e) => setTQuery(e.target.value)}
+                  />
+                </label>
+                {tResults.length > 0 && (
+                  <div className={s.results}>
+                    {tResults.map((it) => (
+                      <button key={it.id} className={s.resultRow} onClick={() => addTest(it)}>
+                        <span><span className={a.mono}>{it.code}</span> {it.name}</span>
+                        <span className={s.resultMeta}>{it.provider} · {vnd.format(it.listPrice)} ₫</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
+                className={s.catalogBtn}
                 onClick={() => setPickerOpen(true)}
                 title="Xem toàn bộ danh mục xét nghiệm"
                 aria-label="Xem toàn bộ danh mục xét nghiệm"
-                style={{
-                  position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)",
-                  height: 30, width: 32, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  border: "1px solid var(--border-3)", borderRadius: 8, background: "var(--action-soft)",
-                  color: "var(--action-hover)", cursor: "pointer", fontSize: 15,
-                }}
               >
-                ☰
+                <Icon name="list" />
+                <span className={s.catalogLabel}>Danh mục</span>
               </button>
-              {tResults.length > 0 && (
-                <div className={s.results}>
-                  {tResults.map((it) => (
-                    <button key={it.id} className={s.resultRow} onClick={() => addTest(it)}>
-                      <span><span className={a.mono}>{it.code}</span> {it.name}</span>
-                      <span className={s.resultMeta}>{it.provider} · {vnd.format(it.listPrice)} ₫</span>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
+          </section>
         </div>
 
-        <div className={s.cart}>
-          <div className={s.cartTitle}>{isDoctor ? "Phiếu chỉ định" : "Giỏ xét nghiệm"}</div>
-          {cart.length === 0 && <div className={s.empty}>Tìm và thêm xét nghiệm ở bên trái.</div>}
-          {cart.map((x) => (
+        <aside className={s.cart} aria-labelledby="of-cart">
+          <div className={s.cartHead}>
+            <h2 id="of-cart" className={s.cartTitle}>{isDoctor ? "Phiếu chỉ định" : "Giỏ xét nghiệm"}</h2>
+            {cart.length > 0 && <span className={s.cartCount}>{cart.length} xét nghiệm</span>}
+          </div>
+          {cart.length === 0 && <div className={s.empty}>Chưa chọn xét nghiệm nào.</div>}
+          {cart.map((x) => {
+            const eff = effPrice(x.labTestId, x.listPrice);
+            return (
             <div key={x.labTestId} className={s.line}>
               <div className={s.lineTop}>
                 <span className={s.lineName}>{x.name}</span>
-                <button className={s.remove} onClick={() => setCart((c) => c.filter((y) => y.labTestId !== x.labTestId))}>×</button>
+                <button className={s.remove} aria-label={`Bỏ ${x.name}`} onClick={() => setCart((c) => c.filter((y) => y.labTestId !== x.labTestId))}>
+                  <Icon name="x" size={14} />
+                </button>
               </div>
               <div className={s.lineCtrl}>
                 <select
                   className={s.sampleSel}
+                  aria-label="Loại mẫu"
                   value={x.sampleType}
                   onChange={(e) => setCart((c) => c.map((y) => y.labTestId === x.labTestId ? { ...y, sampleType: e.target.value } : y))}
                 >
@@ -478,38 +513,49 @@ export default function OrderForm({ session, mode, onNavigate }: Props) {
                 <input
                   className={s.qty}
                   type="number"
+                  aria-label="Số lượng"
                   min={1}
                   value={x.qty}
                   onChange={(e) => setCart((c) => c.map((y) => y.labTestId === x.labTestId ? { ...y, qty: Math.max(1, Number(e.target.value) || 1) } : y))}
                 />
-                {effPrice(x.labTestId, x.listPrice) !== x.listPrice ? (
+                {eff !== x.listPrice ? (
                   <span className={s.linePrice} title="Giá đã chốt (deal) của phòng">
+                    <span className={s.dealTag}>Giá deal</span>
                     <span style={{ textDecoration: "line-through", color: "var(--text-faint)", fontWeight: 400, marginRight: 4 }}>
                       {vnd.format(x.listPrice * x.qty)}
                     </span>
-                    <span style={{ color: "var(--success-text)" }}>{vnd.format(effPrice(x.labTestId, x.listPrice) * x.qty)} ₫</span>
+                    {vnd.format(eff * x.qty)} ₫
                   </span>
                 ) : (
                   <span className={s.linePrice}>{vnd.format(x.listPrice * x.qty)} ₫</span>
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {cart.length > 0 && (
             <div className={s.summary}>
-              <span>{cart.length} XN · tạm tính</span>
+              <span>Thành tiền</span>
               <span className={s.total}>{vnd.format(estTotal)} ₫</span>
             </div>
           )}
           {error && <div className={a.error} style={{ marginTop: 8 }}>{error}</div>}
-          <button className={s.submit} onClick={() => submit()} disabled={busy}>
-            {busy ? "Đang gửi…" : isDoctor ? "Gửi chỉ định" : "Đặt xét nghiệm"}
-          </button>
-          {isDoctor && <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8, textAlign: "center" }}>
+          <button className={s.submit} onClick={() => submit()} disabled={busy}>{submitLabel}</button>
+          {isDoctor && <div className={s.cartNote}>
             Dịch vụ có giá chốt (deal) của phòng hiển thị giá deal; còn lại theo giá niêm yết.
           </div>}
+        </aside>
+      </div>
+
+      {/* Điện thoại: thanh gửi luôn hiện ở đáy */}
+      <div className={s.mobileSpacer} />
+      <div className={s.mobileBar}>
+        <div className={s.mobileSum}>
+          <span>{cart.length} xét nghiệm</span>
+          <span>{vnd.format(estTotal)} ₫</span>
         </div>
+        <button className={s.submit} onClick={() => submit()} disabled={busy}>{submitLabel}</button>
       </div>
 
       {qrOpen && <QrScan onFill={applyCccd} onClose={() => setQrOpen(false)} />}

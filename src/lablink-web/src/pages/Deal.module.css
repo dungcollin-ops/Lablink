@@ -210,7 +210,7 @@
   white-space: nowrap;
 }
 .pending {
-  background: #fdf3e3;
+  background: var(--warning-soft);
   color: var(--warning-text);
 }
 .approved {

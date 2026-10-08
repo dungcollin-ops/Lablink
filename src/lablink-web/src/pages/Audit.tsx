@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "../auth/session";
 import { listAudit, type AuditItem } from "../api/admin";
 import s from "./admin.module.css";
+import Icon from "../components/Icon";
 
 const PAGE_SIZE = 50;
 
@@ -77,8 +78,8 @@ export default function Audit({ session }: { session: Session }) {
 
       <div className={s.pager}>
         <span className={s.pageInfo}>{total} bản ghi · trang {page}/{totalPages}</span>
-        <button className={s.btn} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Trước</button>
-        <button className={s.btn} disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Sau →</button>
+        <button className={s.btn} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><Icon name="chevronLeft" size={14} /> Trước</button>
+        <button className={s.btn} disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Sau <Icon name="chevronRight" size={14} /></button>
       </div>
     </div>
   );

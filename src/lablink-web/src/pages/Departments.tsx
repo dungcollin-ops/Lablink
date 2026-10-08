@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Session } from "../auth/session";
 import {
   listDepartments, createDepartment, updateDepartment, DEPT_TYPES,
@@ -7,6 +7,7 @@ import {
 import { ApiError } from "../api/http";
 import Modal from "../components/Modal";
 import a from "./admin.module.css";
+import Icon from "../components/Icon";
 
 const empty: DepartmentInput = {
   name: "", type: "Phòng khám", address: "", phone: "", hardCopyRequired: true, isActive: true,
@@ -25,55 +26,54 @@ export default function Departments({ session }: { session: Session }) {
   }, [token]);
   useEffect(reload, [reload]);
 
-  const th: CSSProperties = { textAlign: "left", padding: "8px 10px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
-  const td: CSSProperties = { padding: "8px 10px", fontSize: 14, borderBottom: "1px solid var(--border-2)" };
-
   return (
     <div>
       <div className={a.head}>
         <div className={a.h1}>Danh mục phòng ban</div>
-        <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setCreating(true)}>＋ Thêm phòng ban</button>
+        <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setCreating(true)}><Icon name="plus" size={14} /> Thêm phòng ban</button>
       </div>
 
       {loading && <div style={{ padding: 16, color: "var(--text-muted)" }}>Đang tải…</div>}
       {!loading && (
-        <div style={{ overflowX: "auto", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-card)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className={a.tableWrap}><div className={a.scroll}>
+          <table className={a.table}>
             <thead>
               <tr>
-                <th style={th}>Tên phòng ban</th>
-                <th style={th}>Loại</th>
-                <th style={th}>Địa chỉ</th>
-                <th style={th}>SĐT</th>
-                <th style={th}>Bản cứng</th>
-                <th style={th}>Trạng thái</th>
-                <th style={th}></th>
+                <th>Tên phòng ban</th>
+                <th>Loại</th>
+                <th>Địa chỉ</th>
+                <th>SĐT</th>
+                <th>Bản cứng</th>
+                <th>Trạng thái</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {items.map((d) => (
                 <tr key={d.id}>
-                  <td style={{ ...td, fontWeight: 600 }}>{d.name}</td>
-                  <td style={td}>{d.type}</td>
-                  <td style={td}>{d.address || "—"}</td>
-                  <td style={td}>{d.phone || "—"}</td>
-                  <td style={td}>{d.hardCopyRequired ? "Có" : "Không"}</td>
-                  <td style={td}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: d.isActive ? "var(--success-text)" : "var(--text-faint)" }}>
+                  <td className={a.name}>{d.name}</td>
+                  <td>{d.type}</td>
+                  <td>{d.address || "—"}</td>
+                  <td>{d.phone || "—"}</td>
+                  <td>{d.hardCopyRequired ? "Có" : "Không"}</td>
+                  <td>
+                    <span className={`${a.badge} ${d.isActive ? a.badgeActive : a.badgeLeft}`}>
                       {d.isActive ? "Đang dùng" : "Đã ẩn"}
                     </span>
                   </td>
-                  <td style={td}>
-                    <button className={a.btn} onClick={() => setEditing(d)}>Sửa</button>
+                  <td>
+                    <div className={a.rowActions}>
+                      <button className={a.btn} onClick={() => setEditing(d)}>Sửa</button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {items.length === 0 && (
-                <tr><td style={{ ...td, color: "var(--text-faint)" }} colSpan={7}>Chưa có phòng ban nào.</td></tr>
+                <tr><td className={a.state} colSpan={7}>Chưa có phòng ban nào.</td></tr>
               )}
             </tbody>
           </table>
-        </div>
+        </div></div>
       )}
 
       {(creating || editing) && (

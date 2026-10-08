@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchCatalog, fetchFacets, type CatalogItem } from "../api/catalog";
 import Modal from "./Modal";
 import a from "../pages/admin.module.css";
+import Icon from "./Icon";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 const PAGE_SIZE = 20;
@@ -89,7 +90,7 @@ export default function CatalogPicker({ token, addedIds, onAdd, onClose }: Props
                 onClick={() => onAdd(it)}
                 style={{ whiteSpace: "nowrap" }}
               >
-                {added ? "✓ Đã thêm" : "＋ Thêm"}
+                {added ? <><Icon name="check" size={14} /> Đã thêm</> : <><Icon name="plus" size={14} /> Thêm</>}
               </button>
             </div>
           );
@@ -103,9 +104,9 @@ export default function CatalogPicker({ token, addedIds, onAdd, onClose }: Props
 
       {pages > 1 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 10 }}>
-          <button className={a.btn} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Trước</button>
+          <button className={a.btn} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><Icon name="chevronLeft" size={14} /> Trước</button>
           <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Trang {page}/{pages}</span>
-          <button className={a.btn} disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Sau →</button>
+          <button className={a.btn} disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Sau <Icon name="chevronRight" size={14} /></button>
         </div>
       )}
     </Modal>

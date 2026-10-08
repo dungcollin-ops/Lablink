@@ -60,12 +60,13 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Tự apply migration + seed dữ liệu nền (mọi môi trường; idempotent).
-// Seed:DemoUsers = false để KHÔNG tạo 4 tài khoản demo ở production thật.
+// Tài khoản demo (mật khẩu "demo") CHỈ tạo khi bật rõ Seed:DemoUsers = true — DB dev và VPS dùng chung,
+// nên mặc định tắt để chạy API ở máy dev không sinh lại tài khoản mật khẩu yếu trên dữ liệu thật.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    var seedDemo = builder.Configuration.GetValue("Seed:DemoUsers", true);
+    var seedDemo = builder.Configuration.GetValue("Seed:DemoUsers", false);
     await db.Database.MigrateAsync();
     await DbSeeder.SeedAsync(db, hasher, seedDemo);
     await CatalogSeeder.SeedAsync(db);

@@ -8,6 +8,7 @@ import Modal from "./Modal";
 import ResultViewer from "./ResultViewer";
 import SampleSteps from "./SampleSteps";
 import a from "../pages/admin.module.css";
+import Icon from "./Icon";
 
 const vnd = new Intl.NumberFormat("vi-VN");
 const STAGE_LABEL: Record<string, string> = {
@@ -168,7 +169,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
   const etaAt = o.progress?.expectedResultAt;
   const overdue = etaAt ? new Date(etaAt) < new Date() && o.stage !== "Resulted" && o.stage !== "HardCopySent" && o.stage !== "HardCopyReceived" : false;
   const etaText = etaAt
-    ? `Dự kiến trả KQ: ${new Date(etaAt).toLocaleString("vi-VN")}${overdue ? " — ⚠️ QUÁ HẠN" : ""}`
+    ? `Dự kiến trả KQ: ${new Date(etaAt).toLocaleString("vi-VN")}${overdue ? " — QUÁ HẠN" : ""}`
     : (o.etaMaxHours ? `Dự kiến trả KQ: ~${o.etaMinHours ?? o.etaMaxHours}–${o.etaMaxHours} giờ làm việc (tính từ khi nhận mẫu)` : "");
 
   const grid3: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 };
@@ -223,7 +224,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
         <div style={{ marginTop: 12, padding: "10px 12px", background: "var(--action-soft)", borderRadius: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--action-hover)", fontWeight: 600 }}>Bước kế của bạn:</span>
           <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginLeft: "auto" }} disabled={advancing} onClick={advance}>
-            {advancing ? "Đang lưu…" : `✓ ${STAGE_ACTION[nx.stage] ?? nx.stage}`}
+            {advancing ? "Đang lưu…" : <><Icon name="check" size={14} /> {STAGE_ACTION[nx.stage] ?? nx.stage}</>}
           </button>
         </div>
       )}
@@ -283,7 +284,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
             <>
               <div style={blkTitle}>Kết quả</div>
               <button className={`${a.btn} ${a.btnPrimary}`} onClick={() => setViewing(true)}>
-                👁 Xem kết quả ({o.resultFileName})
+                <Icon name="eye" size={14} /> Xem kết quả ({o.resultFileName})
               </button>
             </>
           )}
@@ -346,7 +347,7 @@ function OrderModal({ token, order, perms, onClose, onSaved }: {
           ))}
 
           <div style={{ marginTop: 10, position: "relative" }}>
-            <input className={a.input} placeholder="＋ Thêm xét nghiệm (tìm tên / mã)…"
+            <input className={a.input} placeholder="Thêm xét nghiệm (tìm tên / mã)…"
               value={tQuery} onChange={(e) => setTQuery(e.target.value)} />
             {tResults.length > 0 && (
               <div style={{ marginTop: 6, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>

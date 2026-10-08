@@ -43,11 +43,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { id: "u-admin", fullName: "Quản trị viên", email: "admin@lablink.local", role: "admin", password: "demo" },
 ];
 
-export const DEMO_HINTS = DEMO_ACCOUNTS.map((a) => ({
-  email: a.email,
-  role: a.role,
-}));
-
 /** Trả về Session nếu đúng email+mật khẩu, ngược lại null. */
 export function mockLogin(email: string, password: string): Session | null {
   const norm = email.trim().toLowerCase();

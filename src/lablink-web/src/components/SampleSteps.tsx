@@ -3,6 +3,7 @@ import { setOrderStage } from "../api/orders";
 import { sampleSteps, type SampleProgress } from "../workflow";
 import { ApiError } from "../api/http";
 import t from "../pages/Track.module.css";
+import Icon from "./Icon";
 
 const fmt = (s?: string | null) =>
   s ? new Date(s).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
@@ -44,7 +45,7 @@ export default function SampleSteps({ token, orderId, progress, perms, onDone }:
               title={title}
               onClick={() => canDo && confirm(s.key)}
             >
-              {busy === s.key ? "Đang lưu…" : `${s.done ? "✓ " : ""}${s.label}${s.blocked && !s.done ? ` · ${s.blockedReason}` : ""}`}
+              {busy === s.key ? "Đang lưu…" : <>{s.done && <Icon name="check" size={14} />}{s.label}{s.blocked && !s.done ? ` · ${s.blockedReason}` : ""}</>}
             </button>
           );
         })}

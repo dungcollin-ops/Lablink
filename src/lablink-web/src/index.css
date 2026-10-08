@@ -47,3 +47,28 @@ a {
     width: 100%;
   }
 }
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+/* Điện thoại: chữ ô nhập ≥16px để iOS không tự phóng to khi chạm vào ô. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

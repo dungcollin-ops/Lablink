@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchResultBlob } from "../api/orders";
 import a from "../pages/admin.module.css";
+import Icon from "./Icon";
 
 interface Loaded { url: string; type: string; name: string }
 
@@ -53,7 +54,7 @@ export default function ResultViewer({ token, orderId, orderNo, onClose }: {
           <b style={{ color: "var(--text-title)" }}>Kết quả · {orderNo}</b>
           {data && <span style={{ fontSize: 12, color: "var(--text-faint)" }}>{data.name}</span>}
           <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            {data && <button className={`${a.btn} ${a.btnPrimary}`} onClick={download}>⭳ Tải về</button>}
+            {data && <button className={`${a.btn} ${a.btnPrimary}`} onClick={download}><Icon name="download" size={14} /> Tải về</button>}
             <button className={a.btn} onClick={onClose}>Đóng</button>
           </span>
         </div>
@@ -69,7 +70,7 @@ export default function ResultViewer({ token, orderId, orderNo, onClose }: {
           {data && !isPdf && !isImg && (
             <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>
               Định dạng này không xem trực tiếp được.<br />
-              <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginTop: 12 }} onClick={download}>⭳ Tải về để mở</button>
+              <button className={`${a.btn} ${a.btnPrimary}`} style={{ marginTop: 12 }} onClick={download}><Icon name="download" size={14} /> Tải về để mở</button>
             </div>
           )}
         </div>
