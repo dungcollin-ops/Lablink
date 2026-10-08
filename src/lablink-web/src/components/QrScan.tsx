@@ -3,6 +3,7 @@ import Modal from "./Modal";
 import Icon from "./Icon";
 import a from "../pages/admin.module.css";
 import s from "./QrScan.module.css";
+import zxingWasmUrl from "zxing-wasm/reader/zxing_reader.wasm?url";
 
 export interface CccdData {
   fullName?: string;
@@ -40,14 +41,34 @@ type Source = HTMLVideoElement | HTMLImageElement;
 type NativeDetector = { detect: (v: unknown) => Promise<{ rawValue: string }[]> };
 type NativeDetectorCtor = (new (o: object) => NativeDetector) & { getSupportedFormats?: () => Promise<string[]> };
 type JsQR = typeof import("jsqr").default;
+type ZxingRead = (img: ImageData) => Promise<string | null>;
 
 const srcSize = (src: Source) =>
   src instanceof HTMLVideoElement ? [src.videoWidth, src.videoHeight] : [src.naturalWidth, src.naturalHeight];
 
-/** Bộ đọc QR: BarcodeDetector của trình duyệt (Chrome Android/Mac) nếu có, cộng jsQR cho mọi trình duyệt.
- * jsQR thử nhiều vùng/cỡ ảnh vì QR CCCD khá dày: vùng giữa ở độ phân giải gốc, rồi cả khung hình. */
+/** ZXing (WebAssembly) — đọc tốt QR nhỏ/dày/nền hoa văn như QR CCCD, chạy cả iPhone.
+ * File .wasm phục vụ từ chính site (không tải từ CDN). Chữ tiếng Việt: giải mã bytes theo UTF-8. */
+async function loadZxing(): Promise<ZxingRead> {
+  const z = await import("zxing-wasm/reader");
+  await z.prepareZXingModule({
+    overrides: { locateFile: (path: string, prefix: string) => (path.endsWith(".wasm") ? zxingWasmUrl : prefix + path) },
+    fireImmediately: true,
+  });
+  const utf8 = new TextDecoder("utf-8", { fatal: true });
+  return async (img) => {
+    const r = (await z.readBarcodes(img, {
+      formats: ["QRCode"], tryHarder: true, tryRotate: true, tryInvert: true, tryDownscale: true, maxNumberOfSymbols: 1,
+    }))[0];
+    if (!r?.isValid) return null;
+    try { return r.bytes?.length ? utf8.decode(r.bytes) : r.text; } catch { return r.text; }
+  };
+}
+
+/** Bộ đọc QR, thử lần lượt: BarcodeDetector của trình duyệt (Chrome Android/Mac) → ZXing → jsQR (dự phòng).
+ * Thử nhiều vùng/cỡ ảnh vì QR CCCD khá nhỏ: vùng giữa ở độ phân giải gốc, rồi cả khung hình. */
 class QrReader {
   private native: NativeDetector | null = null;
+  private zxing: ZxingRead | null = null;
   private jsqr: JsQR | null = null;
   private canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d", { willReadFrequently: true });
@@ -59,29 +80,30 @@ class QrReader {
       try {
         const formats = (await BD.getSupportedFormats?.()) ?? ["qr_code"];
         if (formats.includes("qr_code")) r.native = new BD({ formats: ["qr_code"] });
-      } catch { /* dùng jsQR */ }
+      } catch { /* dùng ZXing */ }
     }
-    r.jsqr = (await import("jsqr")).default;
+    try { r.zxing = await loadZxing(); }
+    catch { r.jsqr = (await import("jsqr")).default; } // không tải được WebAssembly → jsQR
     return r;
   }
 
-  /** Đọc 1 khung hình/ảnh. `thorough` = thử thêm nhiều cỡ + đảo màu (dùng cho ảnh chụp). */
+  /** Đọc 1 khung hình/ảnh. `thorough` = thử thêm nhiều cỡ (dùng cho ảnh chụp). */
   async read(src: Source, frame: number, thorough = false): Promise<string | null> {
     if (this.native) {
       try {
         const hit = (await this.native.detect(src))[0]?.rawValue;
         if (hit) return hit;
-      } catch { /* thử jsQR */ }
+      } catch { /* thử ZXing */ }
     }
     const [w, h] = srcSize(src);
-    if (!this.jsqr || !this.ctx || !w || !h) return null;
+    if (!this.ctx || !w || !h) return null;
     const side = Math.min(w, h);
     // Các vùng thử: [x, y, rộng, cao, cạnh dài tối đa sau khi thu nhỏ]
     const regions: [number, number, number, number, number][] = thorough
-      ? [[0, 0, w, h, 2000], [0, 0, w, h, 1200], [0, 0, w, h, 800],
-         [(w - side * 0.7) / 2, (h - side * 0.7) / 2, side * 0.7, side * 0.7, 1200]]
+      ? [[0, 0, w, h, 2400], [0, 0, w, h, 4096], // cả ảnh: thu nhỏ, rồi độ phân giải gốc (QR nhỏ trong ảnh)
+         [(w - side * 0.7) / 2, (h - side * 0.7) / 2, side * 0.7, side * 0.7, 4096], [0, 0, w, h, 1200]]
       : frame % 2 === 0
-        ? [[(w - side * 0.75) / 2, (h - side * 0.75) / 2, side * 0.75, side * 0.75, 1000]] // vùng giữa, gần độ phân giải gốc
+        ? [[(w - side * 0.75) / 2, (h - side * 0.75) / 2, side * 0.75, side * 0.75, 1080]] // vùng giữa, gần độ phân giải gốc
         : [[0, 0, w, h, 1280]];                                                           // cả khung hình
     for (const [x, y, rw, rh, max] of regions) {
       const k = Math.min(1, max / Math.max(rw, rh));
@@ -89,14 +111,26 @@ class QrReader {
       this.canvas.height = Math.round(rh * k);
       this.ctx.drawImage(src, x, y, rw, rh, 0, 0, this.canvas.width, this.canvas.height);
       const img = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-      const res = this.jsqr(img.data, img.width, img.height, {
-        inversionAttempts: thorough || frame % 6 === 0 ? "attemptBoth" : "dontInvert",
-      });
-      if (res?.data) return res.data;
+      if (this.zxing) {
+        const hit = await this.zxing(img);
+        if (hit) return hit;
+      } else if (this.jsqr) {
+        const res = this.jsqr(img.data, img.width, img.height, {
+          inversionAttempts: thorough || frame % 6 === 0 ? "attemptBoth" : "dontInvert",
+        });
+        if (res?.data) return res.data;
+      }
     }
     return null;
   }
 }
+
+// Dùng chung 1 bộ đọc cho cả phiên — ZXing (.wasm ~1MB) chỉ tải & khởi tạo 1 lần dù mở popup nhiều lần.
+let sharedReader: Promise<QrReader> | null = null;
+const getReader = () => {
+  sharedReader ??= QrReader.create().catch((e) => { sharedReader = null; throw e; });
+  return sharedReader;
+};
 
 function cameraError(e: unknown): string {
   const name = (e as { name?: string })?.name;
@@ -112,7 +146,6 @@ function cameraError(e: unknown): string {
 export default function QrScan({ onFill, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const readerRef = useRef<Promise<QrReader> | null>(null);
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [camWarn, setCamWarn] = useState("");
@@ -124,8 +157,6 @@ export default function QrScan({ onFill, onClose }: Props) {
   const fillRef = useRef(onFill);
   const closeRef = useRef(onClose);
   useEffect(() => { fillRef.current = onFill; closeRef.current = onClose; });
-
-  const getReader = () => (readerRef.current ??= QrReader.create());
 
   /** Đọc được chuỗi → điền form nếu đúng QR CCCD. Trả false nếu không phải QR CCCD. */
   const accept = (raw: string) => {
@@ -185,7 +216,7 @@ export default function QrScan({ onFill, onClose }: Props) {
           if (raw && accept(raw)) return;
           if (raw && !wrongShown) { wrongShown = true; setStatus("Đọc được mã QR nhưng không phải QR trên CCCD."); }
         } catch { /* bỏ qua khung hình lỗi */ }
-        timer = window.setTimeout(tick, 120);
+        timer = window.setTimeout(tick, 200);
       };
       tick();
     }
