@@ -11,7 +11,7 @@
 #   - Tạo + chạy service "caddy" (tự lấy/gia hạn chứng chỉ, tự chuyển http → https).
 #
 # Ví dụ (PowerShell Administrator):
-#   .\setup-https.ps1 -VpsHost 103.178.235.143 -User "103.178.235.143\Administrator" -Domain fastlab.vn -StopIis
+#   .\setup-https.ps1 -VpsHost 165.99.14.10 -User "165.99.14.10\Administrator" -Domain fastlab.vn -StopIis
 #   (SSL miễn phí từ Let's Encrypt — không cần mua chứng chỉ, Caddy tự gia hạn.)
 #   -StopIis : tắt + vô hiệu IIS (W3SVC) để nhả cổng 80/443 cho Caddy. CHỈ dùng khi IIS không chạy site nào khác.
 #   www.<ten-mien> nếu đã trỏ về VPS sẽ tự chuyển hướng về <ten-mien> (tắt bằng -NoWww).

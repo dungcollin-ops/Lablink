@@ -17,7 +17,7 @@
 #   - Khởi động lại VPS (service Windows chỉ nhận biến môi trường mới sau khi reboot).
 #
 # Ví dụ (PowerShell Administrator trên máy DEV):
-#   .\bootstrap-vps.ps1 -VpsHost 103.178.235.143 -User "103.178.235.143\Administrator"
+#   .\bootstrap-vps.ps1 -VpsHost 165.99.14.10 -User "165.99.14.10\Administrator"
 
 param(
   [Parameter(Mandatory = $true)][string]$VpsHost,
